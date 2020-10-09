@@ -71,7 +71,7 @@ except Exception as e:
 
 
 # %% load data and plot
-filename_to_load = "data_for_imm_pda.mat"
+filename_to_load = "gradedIMMPDA/data_for_imm_pda.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 K = loaded_data["K"].item()
 Ts = loaded_data["Ts"].item()

@@ -36,7 +36,7 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         g_squared = self.gate_size ** 2
 
         #Array with either shape=(M)
-        gated = np.ndarray([np.any((self.state_filter.NIS(z, filter_state) <= g_squared for z in Z), axis=0)])
+        gated = np.array(np.any([self.state_filter.NIS(z, filter_state) <= g_squared for z in Z], axis=1))
         return gated
 
     def loglikelihood_ratios( #det er mer numerisk stabilt å regne med logaritmer
@@ -102,10 +102,10 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
             filter_state
         )
         for i in range(Z.shape[0]):
-            conditional_update.extend(
+            conditional_update.extend([
                 # TODO: some loop over Z making a list of updates
                 self.state_filter.update(Z[i], filter_state)
-            )
+            ])
 
         return conditional_update
 
