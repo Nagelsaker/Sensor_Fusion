@@ -145,7 +145,7 @@ class EKF:
 
         # TODO: resue the above functions
         ekfstate_pred = self.predict(ekfstate, Ts)  # TODO
-        ekfstate_upd = self.update(z, ekfstate, sensor_state=sensor_state)  # TODO
+        ekfstate_upd = self.update(z, ekfstate_pred, sensor_state=sensor_state)  # TODO
         return ekfstate_upd
 
     def NIS(self,
@@ -157,8 +157,6 @@ class EKF:
         """Calculate the normalized innovation squared for ekfstate at z in sensor_state"""
 
         v, S = self.innovation(z, ekfstate, sensor_state=sensor_state)
-
-        #NIS = np.transpose(v)@la.inv(S)@v  # TODO
 
         cholS = la.cholesky(S, lower=True)
         invcholS_v = la.solve_triangular(cholS, v, lower=True)

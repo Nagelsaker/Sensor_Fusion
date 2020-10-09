@@ -138,19 +138,19 @@ tracker_update_list = []
 tracker_predict_list = []
 # estimate
 for k, (Zk, x_true_k) in enumerate(zip(Z, Xgt)):
-    tracker_predict = pda.PDA.predict(tracker, x_true_k, Ts)# TODO
-    tracker_update = pda.PDA.update(tracker, Zk, tracker_predict)# TODO
-    NEES[k] = ekf.EKF.NEES(tracker_update, x_true_k)# TODO
-    NEESpos[k] = ekf.EKF.NEES(tracker_update[:1], x_true_k[:1])# TODO
-    NEESvel[k] = ekf.EKF.NEES(tracker_update[1:], x_true_k[1:])# TODO
+    tracker_predict = tracker.predict(tracker_update, x_true_k, Ts)# TODO
+    tracker_update = tracker.update(tracker_update, Zk, tracker_predict)# TODO
+    NEES[k] = tracker.NEES(tracker_update, x_true_k)# TODO
+    NEESpos[k] = tracker.NEES(tracker_update[:1], x_true_k[:1])# TODO
+    NEESvel[k] = tracker.NEES(tracker_update[1:], x_true_k[1:])# TODO
 
     tracker_predict_list.append(tracker_predict)
     tracker_update_list.append(tracker_update)
 
 x_hat = np.array([upd.mean for upd in tracker_update_list])
 # calculate a performance metric
-posRMSE = np.sqrt((()))# TODO: position RMSE
-velRMSE = # TODO: velocity RMSE
+posRMSE = np.sqrt(((Xgt[:1] - x_hat[:1])**2).mean(axis=0))# TODO: position RMSE
+velRMSE = np.sqrt(((Xgt[1:] - x_hat[1:]).mean(axis=0)))# TODO: velocity RMSE
 
 # %% plots
 fig3, ax3 = plt.subplots(num=3, clear=True)
@@ -162,9 +162,9 @@ ax3.set_title(
 
 fig4, axs4 = plt.subplots(3, sharex=True, num=4, clear=True)
 
-confprob = # TODO: probability for confidence interval
-CI2 = # TODO: confidence interval for NEESpos and NEESvel
-CI4 = # TODO: confidence interval for NEES
+confprob = 0.9# TODO: probability for confidence interval
+CI2 = np.array(scipy.stats.chi2.interval(0.9, 2*NEESpos)) / NEESpos# TODO: confidence interval for NEESpos and NEESvel
+CI4 = np.array(scipy.stats.chi2.interval(0.9, 2*NEES)) / NEES# TODO: confidence interval for NEES
 
 axs4[0].plot(np.arange(K) * Ts, NEESpos)
 axs4[0].plot([0, (K - 1) * Ts], np.repeat(CI2[None], 2, 0), "--r")
@@ -184,7 +184,7 @@ axs4[2].set_ylabel("NEES")
 inCI = np.mean((CI2[0] <= NEES) * (NEES <= CI2[1]))
 axs4[2].set_title(f"{inCI*100:.1f}% inside {confprob*100:.1f}% CI")
 
-confprob = # TODO
+#confprob = # TODO
 CI2K = # TODO: ANEESpos and ANEESvel
 CI4K = # TODO: NEES
 ANEESpos = # TODO
