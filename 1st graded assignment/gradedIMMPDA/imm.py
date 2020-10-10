@@ -260,19 +260,12 @@ class IMM(Generic[MT]):
         mode_conditioned_ll = np.fromiter(
             (
                 #None  # TODO: your state filter (fs under) should be able to calculate the mode conditional log likelihood at z from modestate_s
-<<<<<<< HEAD
-                (fs.loglikelihood(z, modestate_s, sensor_state=sensor_state) for fs, modestate_s in zip(self.filters, immstate.components)) #sverre: 6.32 i boka
-            ),
-            dtype=float,
-        ll = np.average(immstate.components, weights=mode_conditioned_ll)  # weighted average of likelihoods (not log!)
-=======
                 [fs.loglikelihood(z, modestate_s, sensor_state=sensor_state) for fs, modestate_s in zip(self.filters, immstate.components)]
             ),
             dtype=float,
         )
 
         ll = logsumexp(mode_conditioned_ll, b=immstate.weights) # weighted average of likelihoods (not log!)
->>>>>>> 38bfb81ce97f2380c0c47115134fca28a3ecbd48
 
         assert np.isfinite(ll), "IMM.loglikelihood: ll not finite"
         assert isinstance(ll, float) or isinstance(
@@ -322,10 +315,10 @@ class IMM(Generic[MT]):
         # The mode s for association j should be available as imm_mixture.components[j].components[s]
 
         
-        mode_components = zip([comp.components for comp in immstate_mixture.components])
+        mode_components = zip(*[comp.components for comp in immstate_mixture.components])
 
         mode_states: List[GaussParams] = [
-            fs.reduce_mixture(MixtureParameters(mode_s_conditioned_component_prob, mode_comp))
+            fs.reduce_mixture(MixtureParameters(mode_s_conditioned_component_prob, single_mode_component))
             for fs, mode_s_conditioned_component_prob, single_mode_component in zip(self.filters, mode_conditioned_component_prob, mode_components)
         ]
 
@@ -372,4 +365,4 @@ class IMM(Generic[MT]):
             ]
         )
 
-        return NIS
+        return NISes
