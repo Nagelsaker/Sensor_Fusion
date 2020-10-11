@@ -1,3 +1,0 @@
-"1st graded assignment/gradedIMMPDA/__pycache__/imm.cpython-38.pyc"
-
-*.pyc
