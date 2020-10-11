@@ -71,7 +71,8 @@ except Exception as e:
 
 
 # %% load data and plot
-filename_to_load = "data_for_imm_pda.mat"
+# filename_to_load = "1st graded assignment/gradedIMMPDA/data_for_imm_pda."
+filename_to_load = "data_for_imm_pda"
 loaded_data = scipy.io.loadmat(filename_to_load)
 K = loaded_data["K"].item()
 Ts = loaded_data["Ts"].item()
@@ -123,15 +124,16 @@ if play_movie:
 # but no exceptions do not guarantee correct implementation.
 
 # sensor
-sigma_z = 10
-clutter_intensity = 1e-2
-PD = 0.8
-gate_size = 5
+sigma_z = 2 #sverre: lavere sigma_z: det skal lite til å skifte mode, høyere sigma_z: det skal mye til for å skifte mode.
+#sverre: det blir bedre NEES ved lavere sigma_z. Det lar filteret skifte mode oftere slik at trajectory'en blir bedre tilnærmet. 
+clutter_intensity = 1e-4 #the less likely a false measurement is, the better performance. See performance difference between 1e-3 and 1e-4
+PD = 0.8 #sverre: probability of detection
+gate_size = 4
 
 # dynamic models
-sigma_a_CV = 0.5
-sigma_a_CT = 0.5
-sigma_omega = 0.3
+sigma_a_CV = 0.3 # sverre: process disturbance CV. From exerice 4 solution
+sigma_a_CT = 0.1 # sverre: process disturbance CT. From exercise 4 solution
+sigma_omega = 0.03
 
 
 # markov chain
@@ -144,7 +146,7 @@ PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
 mean_init = np.array([0, 0, 0, 0, 0])
-cov_init = np.diag([1000, 1000, 30, 30, 0.1]) ** 2  # THIS WILL NOT BE GOOD
+cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2  # From exercise 4 solution
 mode_probabilities_init = np.array([p10, (1 - p10)])
 mode_states_init = GaussParams(mean_init, cov_init)
 init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 2)
