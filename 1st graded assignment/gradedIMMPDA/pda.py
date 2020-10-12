@@ -36,6 +36,7 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         g_squared = self.gate_size ** 2
 
         #Array with either shape=(M)
+        
         gated = np.array(np.any([self.state_filter.NIS(z, filter_state) <= g_squared for z in Z], axis=1))
         return gated
 

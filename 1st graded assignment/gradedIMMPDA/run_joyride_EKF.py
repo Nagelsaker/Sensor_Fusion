@@ -131,38 +131,24 @@ gate_size = 4
 
 # dynamic models
 sigma_a_CV = 0.3
-sigma_a_CV_high = 3
 sigma_a_CT = 0.1
 sigma_omega = 0.03
 
 
 # markov chain
-PI11 = 0.6
-PI12 = 0.3
-PI13 = 0.1
+PI11 = 0.9
+PI22 = 0.9
 
-PI21 = 0.3
-PI22 = 0.6
-PI23 = 0.1
+p10 = 0.9  # initvalue for mode probabilities
 
-PI31 = 0.3
-PI32 = 0.3
-PI33 = 0.4
-
-PI = np.array([
-    [PI11, PI12, PI13], 
-    [PI21, PI22, PI23], 
-    [PI31, PI32, PI33]
-])
-
+PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
-mean_init = np.array([7000, 3600, 0, 0, 0]) # Sverre: er omtrent der sporet begynner. 
-cov_init = np.diag([14, 14, 1, 1, 0.005]) ** 2 
-mode_probabilities_init = np.array([0.7, 0.2, 0.1]) #sverre: utvidet pga den tredje moden
+mean_init = np.array([7000, 3600, 0, 0, 0])
+cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2  # From exercise 4 solution
+mode_probabilities_init = np.array([p10, (1 - p10)])
 mode_states_init = GaussParams(mean_init, cov_init)
-init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 3) #sverre: må ganges med tre og ikke to pga. den tredje moden
-
+init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 2)
 assert np.allclose(
     np.sum(mode_probabilities_init), 1
 ), "initial mode probabilities must sum to 1"
@@ -170,13 +156,11 @@ assert np.allclose(
 # make model
 measurement_model = measurementmodels.CartesianPosition(sigma_z, state_dim=5)
 dynamic_models: List[dynamicmodels.DynamicModel] = []
-dynamic_models.append(dynamicmodels.WhitenoiseAccelleration(sigma_a_CV_high, n=5)) #five states: two for position, two for velocity and one for angle velocity
 dynamic_models.append(dynamicmodels.WhitenoiseAccelleration(sigma_a_CV, n=5))
 dynamic_models.append(dynamicmodels.ConstantTurnrate(sigma_a_CT, sigma_omega))
 ekf_filters = []
 ekf_filters.append(ekf.EKF(dynamic_models[0], measurement_model))
 ekf_filters.append(ekf.EKF(dynamic_models[1], measurement_model))
-ekf_filters.append(ekf.EKF(dynamic_models[2], measurement_model))
 imm_filter = imm.IMM(ekf_filters, PI)
 
 tracker = pda.PDA(imm_filter, clutter_intensity, PD, gate_size)

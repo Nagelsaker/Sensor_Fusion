@@ -124,7 +124,7 @@ if play_movie:
 # but no exceptions do not guarantee correct implementation.
 
 # sensor
-sigma_z = 2 #sverre: lavere sigma_z: det skal lite til å skifte mode, høyere sigma_z: det skal mye til for å skifte mode.
+sigma_z = 2 #sverre: lavere sigma_z: det skal lite til å skifte mode, høyere sigma_z: det skal mye til for å skifte mode. (virker som om det er motsatt for run_joyride)
 #sverre: det blir bedre NEES ved lavere sigma_z. Det lar filteret skifte mode oftere slik at trajectory'en blir bedre tilnærmet. 
 clutter_intensity = 1e-4 #the less likely a false measurement is, the better performance. See performance difference between 1e-3 and 1e-4
 PD = 0.8 #sverre: probability of detection
