@@ -123,6 +123,8 @@ if play_movie:
 # Ser på RMSE at det ikke er så stor feil når det kommer til hastigheten. Antar derfor at filteret ikke vil tilbringe så mye tid i CV_high og minker
 # derfor den tilsvarende sannsynligheten i PI. 
 
+model = "CV"
+
 # sensor
 sigma_z = 10
 clutter_intensity = 1e-5
@@ -134,45 +136,25 @@ sigma_a_CV = 0.3
 sigma_a_CT = 0.1
 sigma_omega = 0.03
 
-
-# markov chain
-PI11 = 0.9
-PI22 = 0.9
-
-p10 = 0.9  # initvalue for mode probabilities
-
-PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
-assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
-
 mean_init = np.array([7000, 3600, 0, 0, 0])
-cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2  # From exercise 4 solution
-mode_probabilities_init = np.array([p10, (1 - p10)])
-mode_states_init = GaussParams(mean_init, cov_init)
-init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 2)
-assert np.allclose(
-    np.sum(mode_probabilities_init), 1
-), "initial mode probabilities must sum to 1"
+cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2 
+ekf_init = GaussParams(mean_init, cov_init)
 
 # make model
 measurement_model = measurementmodels.CartesianPosition(sigma_z, state_dim=5)
-dynamic_models: List[dynamicmodels.DynamicModel] = []
-dynamic_models.append(dynamicmodels.WhitenoiseAccelleration(sigma_a_CV, n=5))
-dynamic_models.append(dynamicmodels.ConstantTurnrate(sigma_a_CT, sigma_omega))
-ekf_filters = []
-ekf_filters.append(ekf.EKF(dynamic_models[0], measurement_model))
-ekf_filters.append(ekf.EKF(dynamic_models[1], measurement_model))
-imm_filter = imm.IMM(ekf_filters, PI)
 
-tracker = pda.PDA(imm_filter, clutter_intensity, PD, gate_size)
+if model == "CV":
+    ekf_filter = ekf.EKF(dynamicmodels.WhitenoiseAccelleration(sigma_a_CV, n=5), measurement_model)
+elif model == "CT":
+    ekf_filter = ekf.EKF(dynamicmodels.ConstantTurnrate(sigma_a_CT, sigma_omega), measurement_model)
 
-# init_imm_pda_state = tracker.init_filter_state(init__immstate)
-
+tracker = pda.PDA(ekf_filter, clutter_intensity, PD, gate_size)
 
 NEES = np.zeros(K)
 NEESpos = np.zeros(K)
 NEESvel = np.zeros(K)
 
-tracker_update = init_imm_state
+tracker_update = ekf_init
 tracker_update_list = []
 tracker_predict_list = []
 tracker_estimate_list = []
@@ -197,7 +179,7 @@ for k, (Zk, x_true_k) in enumerate(zip(Z, Xgt)):
 
 
 x_hat = np.array([est.mean for est in tracker_estimate_list])
-prob_hat = np.array([upd.weights for upd in tracker_update_list])
+prob_hat = np.array([1 for upd in tracker_update_list])
 
 # calculate a performance metrics
 poserr = np.linalg.norm(x_hat[:, :2] - Xgt[:, :2], axis=0)                         
