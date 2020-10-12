@@ -36,7 +36,10 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         g_squared = self.gate_size ** 2
 
         #Array with either shape=(M)
-        gated = np.array(np.any([self.state_filter.NIS(z, filter_state) <= g_squared for z in Z], axis=1))
+        if np.array(self.state_filter.NIS(0, filter_state)).shape != ():
+            gated = np.array(np.any(np.array([self.state_filter.NIS(z, filter_state) <= g_squared for z in Z]), axis=1))
+        else:
+            gated = np.array(np.any(np.array([self.state_filter.NIS(z, filter_state) <= g_squared for z in Z])[:,None], axis=1))
         return gated
 
     def loglikelihood_ratios( #det er mer numerisk stabilt å regne med logaritmer

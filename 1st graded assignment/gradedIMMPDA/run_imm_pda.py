@@ -72,7 +72,7 @@ except Exception as e:
 
 # %% load data and plot
 # filename_to_load = "1st graded assignment/gradedIMMPDA/data_for_imm_pda."
-filename_to_load = "data_for_imm_pda"
+filename_to_load = "1st graded assignment/gradedIMMPDA/data_for_imm_pda"
 loaded_data = scipy.io.loadmat(filename_to_load)
 K = loaded_data["K"].item()
 Ts = loaded_data["Ts"].item()
@@ -146,9 +146,10 @@ PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
 mean_init = np.array([0, 0, 0, 0, 0])
-cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2  # From exercise 4 solution
+cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2
 mode_probabilities_init = np.array([p10, (1 - p10)])
 mode_states_init = GaussParams(mean_init, cov_init)
+init_ekf_state = GaussParams(mean_init, cov_init)
 init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 2)
 
 assert np.allclose(
@@ -165,7 +166,8 @@ ekf_filters.append(ekf.EKF(dynamic_models[0], measurement_model))
 ekf_filters.append(ekf.EKF(dynamic_models[1], measurement_model))
 imm_filter = imm.IMM(ekf_filters, PI)
 
-tracker = pda.PDA(imm_filter, clutter_intensity, PD, gate_size)
+# tracker = pda.PDA(imm_filter, clutter_intensity, PD, gate_size)
+tracker = pda.PDA(ekf_filters[0], clutter_intensity, PD, gate_size)
 
 # init_imm_pda_state = tracker.init_filter_state(init__immstate)
 
@@ -174,7 +176,8 @@ NEES = np.zeros(K)
 NEESpos = np.zeros(K)
 NEESvel = np.zeros(K)
 
-tracker_update = init_imm_state
+# tracker_update = init_imm_state
+tracker_update = init_ekf_state
 tracker_update_list = []
 tracker_predict_list = []
 tracker_estimate_list = []
