@@ -123,7 +123,7 @@ if play_movie:
 # Ser på RMSE at det ikke er så stor feil når det kommer til hastigheten. Antar derfor at filteret ikke vil tilbringe så mye tid i CV_high og minker
 # derfor den tilsvarende sannsynligheten i PI. 
 
-model = "CV"
+model = "CT"
 
 # sensor
 sigma_z = 10
@@ -179,7 +179,7 @@ for k, (Zk, x_true_k) in enumerate(zip(Z, Xgt)):
 
 
 x_hat = np.array([est.mean for est in tracker_estimate_list])
-prob_hat = np.array([1 for upd in tracker_update_list])
+prob_hat = np.array([1 for upd in tracker_update_list])                     #sverre: had to be changed
 
 # calculate a performance metrics
 poserr = np.linalg.norm(x_hat[:, :2] - Xgt[:, :2], axis=0)                         

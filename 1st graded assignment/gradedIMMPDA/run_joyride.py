@@ -124,7 +124,7 @@ if play_movie:
 # derfor den tilsvarende sannsynligheten i PI. 
 
 # sensor
-sigma_z = 10
+sigma_z = 15
 clutter_intensity = 1e-5
 PD = 0.8 
 gate_size = 4
@@ -138,16 +138,16 @@ sigma_omega = 0.03
 
 # markov chain
 PI11 = 0.6
-PI12 = 0.3
-PI13 = 0.1
+PI12 = 0.2
+PI13 = 0.2
 
-PI21 = 0.3
+PI21 = 0.25
 PI22 = 0.6
-PI23 = 0.1
+PI23 = 0.15
 
 PI31 = 0.3
-PI32 = 0.3
-PI33 = 0.4
+PI32 = 0.2
+PI33 = 0.5
 
 PI = np.array([
     [PI11, PI12, PI13], 
@@ -158,7 +158,7 @@ PI = np.array([
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
 mean_init = np.array([7000, 3600, 0, 0, 0]) # Sverre: er omtrent der sporet begynner. 
-cov_init = np.diag([14, 14, 1, 1, 0.005]) ** 2 
+cov_init = np.diag([20, 14, 1, 1, 0.005]) ** 2 
 mode_probabilities_init = np.array([0.7, 0.2, 0.1]) #sverre: utvidet pga den tredje moden
 mode_states_init = GaussParams(mean_init, cov_init)
 init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 3) #sverre: må ganges med tre og ikke to pga. den tredje moden

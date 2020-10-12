@@ -124,15 +124,15 @@ if play_movie:
 # derfor den tilsvarende sannsynligheten i PI. 
 
 # sensor
-sigma_z = 10
+sigma_z = 15
 clutter_intensity = 1e-5
 PD = 0.8 
-gate_size = 4
+gate_size = 5
 
 # dynamic models
-sigma_a_CV = 0.3
-sigma_a_CT = 0.1
-sigma_omega = 0.03
+sigma_a_CV = 1.3
+sigma_a_CT = 0.75
+sigma_omega = 0.09
 
 
 # markov chain
@@ -145,7 +145,7 @@ PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
 mean_init = np.array([7000, 3600, 0, 0, 0])
-cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2  # From exercise 4 solution
+cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2 
 mode_probabilities_init = np.array([p10, (1 - p10)])
 mode_states_init = GaussParams(mean_init, cov_init)
 init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 2)
