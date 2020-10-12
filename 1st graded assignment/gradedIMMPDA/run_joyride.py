@@ -118,15 +118,15 @@ if play_movie:
 # %% setup and track (IMM-PDA)
 
 # sensor
-sigma_z = 2 #sverre: lavere sigma_z: det skal lite til å skifte mode, høyere sigma_z: det skal mye til for å skifte mode.
-#sverre: det blir bedre NEES ved lavere sigma_z. Det lar filteret skifte mode oftere slik at trajectory'en blir bedre tilnærmet. 
-clutter_intensity = 1e-4 #the less likely a false measurement is, the better performance. See performance difference between 1e-3 and 1e-4
-PD = 0.8 #sverre: probability of detection
+sigma_z = 10 
+clutter_intensity = 1e-6
+PD = 0.8 
 gate_size = 4
 
 # dynamic models
-sigma_a_CV = 0.3 # sverre: process disturbance CV. From exerice 4 solution
-sigma_a_CT = 0.1 
+sigma_a_CV = 1
+sigma_a_CV_high = 10
+sigma_a_CT = 1 
 sigma_omega = 0.03
 
 
@@ -136,14 +136,33 @@ PI22 = 0.9
 
 p10 = 0.9  # initvalue for mode probabilities
 
-PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
+#PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
+
+P11 = 0.4
+P12 = 0.3
+P13 = 0.3
+
+P21 = 0.3
+P22 = 0.4
+P23 = 0.3
+
+P31 = 0.3
+P32 = 0.3
+P33 = 0.4
+
+PI = np.array([
+    [P11, P12, P13], 
+    [P21, P22, P23], 
+    [P31, P32, P33]
+])
+
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
-mean_init = np.array([0, 0, 0, 0, 0])
-cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2  # From exercise 4 solution
-mode_probabilities_init = np.array([p10, (1 - p10)])
+mean_init = np.array([7000, 3600, 0, 0, 0]) # Sverre: er omtrent der sporet begynner. 
+cov_init = np.diag([14, 14, 1, 1, 0.005]) ** 2 
+mode_probabilities_init = np.array([0.7, 0.2, 0.1]) #sverre: utvidet pga den tredje moden
 mode_states_init = GaussParams(mean_init, cov_init)
-init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 2)
+init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 3) #sverre: må ganges med tre og ikke to pga. den tredje moden
 
 assert np.allclose(
     np.sum(mode_probabilities_init), 1
@@ -152,11 +171,13 @@ assert np.allclose(
 # make model
 measurement_model = measurementmodels.CartesianPosition(sigma_z, state_dim=5)
 dynamic_models: List[dynamicmodels.DynamicModel] = []
+dynamic_models.append(dynamicmodels.WhitenoiseAccelleration(sigma_a_CV_high, n=5)) #five states: two for position, two for velocity and one for angle velocity
 dynamic_models.append(dynamicmodels.WhitenoiseAccelleration(sigma_a_CV, n=5))
 dynamic_models.append(dynamicmodels.ConstantTurnrate(sigma_a_CT, sigma_omega))
 ekf_filters = []
 ekf_filters.append(ekf.EKF(dynamic_models[0], measurement_model))
 ekf_filters.append(ekf.EKF(dynamic_models[1], measurement_model))
+ekf_filters.append(ekf.EKF(dynamic_models[2], measurement_model))
 imm_filter = imm.IMM(ekf_filters, PI)
 
 tracker = pda.PDA(imm_filter, clutter_intensity, PD, gate_size)
@@ -173,8 +194,11 @@ tracker_update_list = []
 tracker_predict_list = []
 tracker_estimate_list = []
 # estimate
+
+Ts_mean = np.mean(Ts)
+
 for k, (Zk, x_true_k) in enumerate(zip(Z, Xgt)):
-    tracker_predict = tracker.predict(tracker_update, Ts)
+    tracker_predict = tracker.predict(tracker_update, Ts_mean)
     tracker_update = tracker.update(Zk, tracker_predict)
 
     # You can look at the prediction estimate as well
@@ -193,8 +217,8 @@ x_hat = np.array([est.mean for est in tracker_estimate_list])
 prob_hat = np.array([upd.weights for upd in tracker_update_list])
 
 # calculate a performance metrics
-poserr = np.linalg.norm(x_hat[:, :2] - Xgt[:, :2], axis=0)
-velerr = np.linalg.norm(x_hat[:, 2:4] - Xgt[:, 2:4], axis=0)
+poserr = np.linalg.norm(x_hat[:, :2] - Xgt[:, :2], axis=0)                         
+velerr = np.linalg.norm(x_hat[:, 2:4] - Xgt[:, 2:4], axis=0)                       
 posRMSE = np.sqrt(
     np.mean(poserr ** 2)
 )  # not true RMSE (which is over monte carlo simulations)
@@ -226,27 +250,27 @@ axs3[0].set_title(
 )
 axs3[0].axis("equal")
 # probabilities
-axs3[1].plot(np.arange(K) * Ts, prob_hat)
+axs3[1].plot(np.arange(K) * Ts_mean, prob_hat)                                       
 axs3[1].set_ylim([0, 1])
 axs3[1].set_ylabel("mode probability")
 axs3[1].set_xlabel("time")
 
 # NEES
 fig4, axs4 = plt.subplots(3, sharex=True, num=4, clear=True)
-axs4[0].plot(np.arange(K) * Ts, NEESpos)
-axs4[0].plot([0, (K - 1) * Ts], np.repeat(CI2[None], 2, 0), "--r")
+axs4[0].plot(np.arange(K) * Ts_mean, NEESpos)
+axs4[0].plot([0, (K - 1) * Ts_mean], np.repeat(CI2[None], 2, 0), "--r")
 axs4[0].set_ylabel("NEES pos")
 inCIpos = np.mean((CI2[0] <= NEESpos) * (NEESpos <= CI2[1]))
 axs4[0].set_title(f"{inCIpos*100:.1f}% inside {confprob*100:.1f}% CI")
 
-axs4[1].plot(np.arange(K) * Ts, NEESvel)
-axs4[1].plot([0, (K - 1) * Ts], np.repeat(CI2[None], 2, 0), "--r")
+axs4[1].plot(np.arange(K) * Ts_mean, NEESvel)
+axs4[1].plot([0, (K - 1) * Ts_mean], np.repeat(CI2[None], 2, 0), "--r")
 axs4[1].set_ylabel("NEES vel")
 inCIvel = np.mean((CI2[0] <= NEESvel) * (NEESvel <= CI2[1]))
 axs4[1].set_title(f"{inCIvel*100:.1f}% inside {confprob*100:.1f}% CI")
 
-axs4[2].plot(np.arange(K) * Ts, NEES)
-axs4[2].plot([0, (K - 1) * Ts], np.repeat(CI4[None], 2, 0), "--r")
+axs4[2].plot(np.arange(K) * Ts_mean, NEES)
+axs4[2].plot([0, (K - 1) * Ts_mean], np.repeat(CI4[None], 2, 0), "--r")
 axs4[2].set_ylabel("NEES")
 inCI = np.mean((CI2[0] <= NEES) * (NEES <= CI2[1]))
 axs4[2].set_title(f"{inCI*100:.1f}% inside {confprob*100:.1f}% CI")
@@ -257,10 +281,10 @@ print(f"ANEES = {ANEES:.2f} with CI = [{CI4K[0]:.2f}, {CI4K[1]:.2f}]")
 
 # errors
 fig5, axs5 = plt.subplots(2, num=5, clear=True)
-axs5[0].plot(np.arange(K) * Ts, np.linalg.norm(x_hat[:, :2] - Xgt[:, :2], axis=1))
+axs5[0].plot(np.arange(K) * Ts_mean, np.linalg.norm(x_hat[:, :2] - Xgt[:, :2], axis=1))
 axs5[0].set_ylabel("position error")
 
-axs5[1].plot(np.arange(K) * Ts, np.linalg.norm(x_hat[:, 2:4] - Xgt[:, 2:4], axis=1))
+axs5[1].plot(np.arange(K) * Ts_mean, np.linalg.norm(x_hat[:, 2:4] - Xgt[:, 2:4], axis=1))
 axs5[1].set_ylabel("velocity error")
 
 plt.show()
