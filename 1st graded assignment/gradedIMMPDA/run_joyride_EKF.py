@@ -70,7 +70,7 @@ except Exception as e:
 
 
 # %% load data and plot
-filename_to_load = "gradedIMMPDA/data_joyride.mat"
+filename_to_load = "data_joyride.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 K = loaded_data["K"].item()
 Ts = loaded_data["Ts"].squeeze()
@@ -123,10 +123,10 @@ if play_movie:
 # Ser på RMSE at det ikke er så stor feil når det kommer til hastigheten. Antar derfor at filteret ikke vil tilbringe så mye tid i CV_high og minker
 # derfor den tilsvarende sannsynligheten i PI. 
 
-model = "CT"
+model = "CV"
 
 # sensor
-sigma_z = 10
+sigma_z = 50
 clutter_intensity = 1e-5
 PD = 0.8 
 gate_size = 4
