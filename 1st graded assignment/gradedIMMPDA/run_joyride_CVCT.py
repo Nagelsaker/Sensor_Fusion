@@ -130,7 +130,7 @@ PD = 0.8
 gate_size = 5
 
 # dynamic models
-sigma_a_CV = 4
+sigma_a_CV = 3.5
 sigma_a_CT = 0.2
 sigma_omega = 0.1
 

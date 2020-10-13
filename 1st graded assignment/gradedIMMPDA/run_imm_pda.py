@@ -123,8 +123,11 @@ if play_movie:
 # No exceptions should be generated if PDA works correctly with IMM,
 # but no exceptions do not guarantee correct implementation.
 
+
+#FERDIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIG
+
 # sensor
-sigma_z = 20 #sverre: større sigma_z medfører større gate.  
+sigma_z = 5 #sverre: større sigma_z medfører større gate.  
 clutter_intensity = 1e-4 #the less likely a false measurement is, the better performance. See performance difference between 1e-3 and 1e-4
 PD = 0.8 #sverre: probability of detection
 gate_size = 4
@@ -166,10 +169,6 @@ ekf_filters.append(ekf.EKF(dynamic_models[1], measurement_model))
 imm_filter = imm.IMM(ekf_filters, PI)
 
 tracker = pda.PDA(imm_filter, clutter_intensity, PD, gate_size)
-#tracker = pda.PDA(ekf_filters, clutter_intensity, PD, gate_size)
-
-# init_imm_pda_state = tracker.init_filter_state(init__immstate)
-
 
 NEES = np.zeros(K)
 NEESpos = np.zeros(K)
