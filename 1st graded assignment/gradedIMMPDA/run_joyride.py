@@ -124,10 +124,10 @@ if play_movie:
 # derfor den tilsvarende sannsynligheten i PI. 
 
 # sensor
-sigma_z = 15
+sigma_z = 5 
 clutter_intensity = 1e-5
-PD = 0.8 
-gate_size = 4
+PD = 0.8
+gate_size = 5 #sverre: kan øke porten masse uten at resultatene blir verre. Kan ikke senke den så mye. Gate_size = 1 førte til divergens.
 
 # dynamic models
 sigma_a_CV = 0.3
@@ -137,17 +137,17 @@ sigma_omega = 0.03
 
 
 # markov chain
-PI11 = 0.6
-PI12 = 0.2
-PI13 = 0.2
+PI11 = 0.65
+PI12 = 0.20
+PI13 = 0.15
 
-PI21 = 0.25
-PI22 = 0.6
+PI21 = 0.20
+PI22 = 0.65
 PI23 = 0.15
 
-PI31 = 0.3
+PI31 = 0.2
 PI32 = 0.2
-PI33 = 0.5
+PI33 = 0.6
 
 PI = np.array([
     [PI11, PI12, PI13], 
