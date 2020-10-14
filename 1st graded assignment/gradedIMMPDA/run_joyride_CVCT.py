@@ -70,7 +70,7 @@ except Exception as e:
 
 
 # %% load data and plot
-filename_to_load = "gradedIMMPDA/data_joyride.mat"
+filename_to_load = "1st graded assignment/gradedIMMPDA/data_joyride.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 K = loaded_data["K"].item()
 Ts = loaded_data["Ts"].squeeze()
@@ -117,22 +117,18 @@ if play_movie:
 
 # %% setup and track (IMM-PDA)
 
-
-# Prøv å anta at det er høy sannsynlighet for at tilstanden forblir i en mode ved å la diagonalen til PI være høy
-# Analyser resultatene ved bruk av ANEES og konfidensintervallene. Se også på målingene for å forklare performance til filteret. 
-# Ser på RMSE at det ikke er så stor feil når det kommer til hastigheten. Antar derfor at filteret ikke vil tilbringe så mye tid i CV_high og minker
-# derfor den tilsvarende sannsynligheten i PI. 
+######################################################### ER GANSKE BRA NÅ #############################################
 
 # sensor
-sigma_z = 15
+sigma_z = 17
 clutter_intensity = 1e-5
 PD = 0.8 
 gate_size = 5
 
 # dynamic models
-sigma_a_CV = 3.5
-sigma_a_CT = 0.2
-sigma_omega = 0.1
+sigma_a_CV = 3.1
+sigma_a_CT = 0.5
+sigma_omega = 0.009
 
 
 # markov chain
@@ -144,7 +140,7 @@ p10 = 0.9  # initvalue for mode probabilities
 PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
-mean_init = np.array([7000, 3600, 0, 0, 0])
+mean_init = np.array([7116, 3617, 0, 0, 0])
 cov_init = np.diag([12, 12, 1, 1, 0.01]) ** 2 
 mode_probabilities_init = np.array([p10, (1 - p10)])
 mode_states_init = GaussParams(mean_init, cov_init)
@@ -255,7 +251,7 @@ axs4[1].set_title(f"{inCIvel*100:.1f}% inside {confprob*100:.1f}% CI")
 axs4[2].plot(np.arange(K) * Ts_mean, NEES)
 axs4[2].plot([0, (K - 1) * Ts_mean], np.repeat(CI4[None], 2, 0), "--r")
 axs4[2].set_ylabel("NEES")
-inCI = np.mean((CI2[0] <= NEES) * (NEES <= CI2[1]))
+inCI = np.mean((CI4[0] <= NEES) * (NEES <= CI4[1]))
 axs4[2].set_title(f"{inCI*100:.1f}% inside {confprob*100:.1f}% CI")
 
 print(f"ANEESpos = {ANEESpos:.2f} with CI = [{CI2K[0]:.2f}, {CI2K[1]:.2f}]")
