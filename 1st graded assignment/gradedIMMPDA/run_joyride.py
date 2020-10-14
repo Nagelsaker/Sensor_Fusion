@@ -70,7 +70,7 @@ except Exception as e:
 
 
 # %% load data and plot
-filename_to_load = "gradedIMMPDA/data_joyride.mat"
+filename_to_load = "1st graded assignment/gradedIMMPDA/data_joyride.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 K = loaded_data["K"].item()
 Ts = loaded_data["Ts"].squeeze()
@@ -118,36 +118,33 @@ if play_movie:
 # %% setup and track (IMM-PDA)
 
 
-# Prøv å anta at det er høy sannsynlighet for at tilstanden forblir i en mode ved å la diagonalen til PI være høy
-# Analyser resultatene ved bruk av ANEES og konfidensintervallene. Se også på målingene for å forklare performance til filteret. 
-# Ser på RMSE at det ikke er så stor feil når det kommer til hastigheten. Antar derfor at filteret ikke vil tilbringe så mye tid i CV_high og minker
-# derfor den tilsvarende sannsynligheten i PI. 
+###################################################### NÅ ER DET GANSKE BRA. SE ANEES OG NEES ##########################################
 
 # sensor
-sigma_z = 15
+sigma_z = 24
 clutter_intensity = 1e-5
 PD = 0.8
 gate_size = 5 #sverre: kan øke porten masse uten at resultatene blir verre. Kan ikke senke den så mye. Gate_size = 1 førte til divergens.
 
 # dynamic models
 sigma_a_CV = 0.5
-sigma_a_CV_high = 6
-sigma_a_CT = 0.01
-sigma_omega = 0.01
+sigma_a_CV_high = 2.5
+sigma_a_CT = 0.05
+sigma_omega = 0.001
 
 
 # markov chain
-PI11 = 0.65
-PI12 = 0.20
-PI13 = 0.15
+PI11 = 0.75
+PI12 = 0.15
+PI13 = 0.1
 
-PI21 = 0.20
-PI22 = 0.65
-PI23 = 0.15
+PI21 = 0.1
+PI22 = 0.7
+PI23 = 0.2
 
-PI31 = 0.2
-PI32 = 0.2
-PI33 = 0.6
+PI31 = 0.125
+PI32 = 0.175
+PI33 = 0.7
 
 PI = np.array([
     [PI11, PI12, PI13], 
@@ -157,9 +154,9 @@ PI = np.array([
 
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
-mean_init = np.array([7000, 3600, 0, 0, 0]) # Sverre: er omtrent der sporet begynner. 
-cov_init = np.diag([20, 14, 1, 1, 0.005]) ** 2 
-mode_probabilities_init = np.array([0.7, 0.2, 0.1]) #sverre: utvidet pga den tredje moden
+mean_init = np.array([7116, 3617, 0, 0, 0]) # Sverre: er omtrent der sporet begynner. 
+cov_init = np.diag([14, 14, 2, 2, 0.5]) ** 2 
+mode_probabilities_init = np.array([0.7, 0.1, 0.2]) #sverre: utvidet pga den tredje moden
 mode_states_init = GaussParams(mean_init, cov_init)
 init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 3) #sverre: må ganges med tre og ikke to pga. den tredje moden
 
