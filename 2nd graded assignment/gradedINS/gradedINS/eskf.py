@@ -267,7 +267,7 @@ class ESKF:
 
         V = np.zeros((30, 30))
         V[FIRST_HALF_INDEX * FIRST_HALF_INDEX] = -A
-        V[SECOND_HALF_INDEX * FIRST_HALF_INDEX] = G @ self.Q_err @ G.T
+        V[SECOND_HALF_INDEX * FIRST_HALF_INDEX] = G @ self.Q_err @ G.T # Riktig Q??
         V[SECOND_HALF_INDEX * SECOND_HALF_INDEX] = A
         
         assert V.shape == (
