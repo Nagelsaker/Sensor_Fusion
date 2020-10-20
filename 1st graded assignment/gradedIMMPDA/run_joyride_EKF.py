@@ -123,21 +123,31 @@ if play_movie:
 # Ser på RMSE at det ikke er så stor feil når det kommer til hastigheten. Antar derfor at filteret ikke vil tilbringe så mye tid i CV_high og minker
 # derfor den tilsvarende sannsynligheten i PI. 
 
-model = "CV"
+model = "CT"
 
-# sensor
-sigma_z = 50
-clutter_intensity = 1e-5
-PD = 0.8 
-gate_size = 4
+if model == "CV":
+    # sensor
+    sigma_z = 22
+    clutter_intensity = 1e-5
+    PD = 0.8 
+    gate_size = 2.5                                            
+    # dynamic model
+    sigma_a_CV = 1.4
+    
+elif model == "CT":
+    # sensor
+    sigma_z = 9
+    clutter_intensity = 1e-5
+    PD = 0.8
+    gate_size = 2
+    #dynamic model
+    sigma_a_CT = 3.5
+    sigma_omega = 0.05
 
-# dynamic models
-sigma_a_CV = 0.3
-sigma_a_CT = 0.1
-sigma_omega = 0.03
+#Fører bruk av bare ett filter med CT modellen til dårlig filter consistency?
 
-mean_init = np.array([7000, 3600, 0, 0, 0])
-cov_init = np.diag([14, 12, 2, 2, 0.02]) ** 2 
+mean_init = np.array([7116, 3617, 0, 0, 0])
+cov_init = np.diag([14, 14, 2, 2, 0.01]) ** 2 
 ekf_init = GaussParams(mean_init, cov_init)
 
 # make model

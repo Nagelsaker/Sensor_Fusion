@@ -70,7 +70,7 @@ except Exception as e:
 
 
 # %% load data and plot
-filename_to_load = "1st graded assignment/gradedIMMPDA/data_joyride.mat"
+filename_to_load = "data_joyride.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 K = loaded_data["K"].item()
 Ts = loaded_data["Ts"].squeeze()
@@ -120,15 +120,15 @@ if play_movie:
 ######################################################### ER GANSKE BRA NÅ #############################################
 
 # sensor
-sigma_z = 17
+sigma_z = 24
 clutter_intensity = 1e-5
 PD = 0.8 
-gate_size = 5
+gate_size = 3
 
 # dynamic models
-sigma_a_CV = 3.1
-sigma_a_CT = 0.5
-sigma_omega = 0.009
+sigma_a_CV = 1.8
+sigma_a_CT = 0.1
+sigma_omega = 0.005
 
 
 # markov chain
@@ -141,7 +141,7 @@ PI = np.array([[PI11, (1 - PI11)], [(1 - PI22), PI22]])
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
 mean_init = np.array([7116, 3617, 0, 0, 0])
-cov_init = np.diag([12, 12, 1, 1, 0.01]) ** 2 
+cov_init = np.diag([14, 14, 2, 2, 0.01]) ** 2 
 mode_probabilities_init = np.array([p10, (1 - p10)])
 mode_states_init = GaussParams(mean_init, cov_init)
 init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 2)

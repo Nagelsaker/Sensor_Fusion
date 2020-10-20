@@ -70,7 +70,7 @@ except Exception as e:
 
 
 # %% load data and plot
-filename_to_load = "1st graded assignment/gradedIMMPDA/data_joyride.mat"
+filename_to_load = "data_joyride.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 K = loaded_data["K"].item()
 Ts = loaded_data["Ts"].squeeze()
@@ -124,7 +124,7 @@ if play_movie:
 sigma_z = 24
 clutter_intensity = 1e-5
 PD = 0.8
-gate_size = 5 #sverre: kan øke porten masse uten at resultatene blir verre. Kan ikke senke den så mye. Gate_size = 1 førte til divergens.
+gate_size = 3 #sverre: kan øke porten masse uten at resultatene blir verre. Kan ikke senke den så mye. Gate_size = 1 førte til divergens.
 
 # dynamic models
 sigma_a_CV = 0.5
@@ -155,7 +155,7 @@ PI = np.array([
 assert np.allclose(np.sum(PI, axis=1), 1), "rows of PI must sum to 1"
 
 mean_init = np.array([7116, 3617, 0, 0, 0]) # Sverre: er omtrent der sporet begynner. 
-cov_init = np.diag([14, 14, 2, 2, 0.5]) ** 2 
+cov_init = np.diag([14, 14, 2, 2, 0.01]) ** 2 
 mode_probabilities_init = np.array([0.7, 0.1, 0.2]) #sverre: utvidet pga den tredje moden
 mode_states_init = GaussParams(mean_init, cov_init)
 init_imm_state = MixtureParameters(mode_probabilities_init, [mode_states_init] * 3) #sverre: må ganges med tre og ikke to pga. den tredje moden
