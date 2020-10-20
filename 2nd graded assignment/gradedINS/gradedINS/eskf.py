@@ -328,7 +328,8 @@ class ESKF:
 
         Ad, GQGd = self.discrete_error_matrices(x_nominal, acceleration, omega, Ts)
 
-        P_predicted = np.zeros((15, 15))
+        F = la.expm(Ts*Ad)
+        P_predicted = F @ P @ F.T + Ad.T @ GQGd
 
         assert P_predicted.shape == (
             15,
