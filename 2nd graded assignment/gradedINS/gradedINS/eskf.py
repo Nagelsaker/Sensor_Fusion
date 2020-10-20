@@ -114,21 +114,18 @@ class ESKF:
 
         R = quaternion_to_rotation_matrix(quaternion, debug=self.debug)
 
-        position_prediction = position + Ts*velocity  # TODO: Calculate predicted position
-        velocity_prediction = velocity + Ts*(R*(acceleration - acceleration_bias) + np.ndarray([0, 0, -9.81]).T)  # TODO: Calculate predicted velocity
-
+        position_prediction = position + Ts*R @ velocity  # TODO: Calculate predicted position
+        # TODO: Calculate predicted velocity
+        velocity_prediction = velocity + Ts* R @ acceleration
         
-        quaternion_prediction = quaternion + Ts*(0.5*cross_product_matrix(quaternion[1:4])*(omega-gyroscope_bias))  # TODO: Calculate predicted quaternion
+        # TODO: Calculate predicted quaternion
+        quaternion_prediction = quaternion + Ts*0.5*cross_product_matrix(quaternion[1:4]) @ R @ omega
 
         # Normalize quaternion
         quaternion_prediction = quaternion_prediction/(np.sqrt(quaternion[0]**2 + quaternion[1]**2 + quaternion[2]**2 + quaternion[3]**2)) # TODO: Normalize
 
-        acceleration_bias_prediction = np.zeros(
-            (3,)
-        )  # TODO: Calculate predicted acceleration bias
-        gyroscope_bias_prediction = np.zeros(
-            (3,)
-        )  # TODO: Calculate predicted gyroscope bias
+        acceleration_bias_prediction = acceleration_bias - Ts*(self.p_acc * np.eye(3) @ acceleration)  # TODO: Calculate predicted acceleration bias
+        gyroscope_bias_prediction = gyroscope_bias - Ts*(self.p_gyro * np.eye(3) @ omega)  # TODO: Calculate predicted gyroscope bias
 
         x_nominal_predicted = np.concatenate(
             (
@@ -177,13 +174,13 @@ class ESKF:
         A = np.zeros((15, 15))
 
         # Set submatrices
-        A[POS_IDX * VEL_IDX] = np.zeros((3,))
-        A[VEL_IDX * ERR_ATT_IDX] = np.zeros((3,))
-        A[VEL_IDX * ERR_ACC_BIAS_IDX] = np.zeros((3,))
-        A[ERR_ATT_IDX * ERR_ATT_IDX] = np.zeros((3,))
-        A[ERR_ATT_IDX * ERR_GYRO_BIAS_IDX] = np.zeros((3,))
-        A[ERR_ACC_BIAS_IDX * ERR_ACC_BIAS_IDX] = np.zeros((3,))
-        A[ERR_GYRO_BIAS_IDX * ERR_GYRO_BIAS_IDX] = np.zeros((3,))
+        A[POS_IDX * VEL_IDX] = np.eye(3)
+        A[VEL_IDX * ERR_ATT_IDX] = -R*cross_product_matrix(R @ acceleration) #er acceleration = (a_m - a_b)?
+        A[VEL_IDX * ERR_ACC_BIAS_IDX] = -R 
+        A[ERR_ATT_IDX * ERR_ATT_IDX] = -cross_product_matrix(R @ omega) #det samme spm gjelder her
+        A[ERR_ATT_IDX * ERR_GYRO_BIAS_IDX] = -np.eye(3)
+        A[ERR_ACC_BIAS_IDX * ERR_ACC_BIAS_IDX] = -self.p_acc*np.eye(3) #p_acc er en proporsjonalitetskonstant (tuning-parameter) som bestermmer raten til biaset
+        A[ERR_GYRO_BIAS_IDX * ERR_GYRO_BIAS_IDX] = -self.p_gyro*np.eye(3) #det samme gjelder her
 
         # Bias correction
         A[VEL_IDX * ERR_ACC_BIAS_IDX] = A[VEL_IDX * ERR_ACC_BIAS_IDX] @ self.S_a
