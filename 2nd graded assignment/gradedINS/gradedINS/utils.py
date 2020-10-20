@@ -8,12 +8,12 @@ def cross_product_matrix(n: ArrayLike, debug: bool = True) -> np.ndarray:
 
     S = np.zeros((3, 3))  # TODO: Create the cross product matrix
 
-    S(1,0) = n(3)
-    S(0,1) = -n(3)
-    S(2,0) = -n(2)
-    S(0,2) = n(2)
-    S(2,1) = n(1)
-    S(1,2) = -n(1)
+    S[1,0] = n[3]
+    S[0,1] = -n[3]
+    S[2,0] = -n[2]
+    S[0,2] = n[2]
+    S[2,1] = n[1]
+    S[1,2] = -n[1]
 
     if debug:
         assert S.shape == (
