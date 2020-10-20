@@ -217,6 +217,10 @@ class ESKF:
         R = quaternion_to_rotation_matrix(x_nominal[ATT_IDX], debug=self.debug)
 
         G = np.zeros((15, 12))
+        G[VEL_IDX * POS_IDX] = -R
+        G[ERR_ATT_IDX * VEL_IDX] = -np.eye(3)
+        G[ERR_ACC_BIAS_IDX * ERR_ATT_IDX] = np.eye(3)
+        G[ERR_GYRO_BIAS_IDX * ERR_ACC_BIAS_IDX] = np.eye(3)
 
         assert G.shape == (15, 12), f"ESKF.Gerr: G-matrix shape incorrect {G.shape}"
         return G
@@ -258,15 +262,23 @@ class ESKF:
         A = self.Aerr(x_nominal, acceleration, omega)
         G = self.Gerr(x_nominal)
 
+        FIRST_HALF_INDEX = CatSlice(start=0, stop=15)
+        SECOND_HALF_INDEX = CatSlice(start=15, stop=30)
+
         V = np.zeros((30, 30))
+        V[FIRST_HALF_INDEX * FIRST_HALF_INDEX] = -A
+        V[SECOND_HALF_INDEX * FIRST_HALF_INDEX] = G @ self.Q_err @ G.T
+        V[SECOND_HALF_INDEX * SECOND_HALF_INDEX] = A
+        
         assert V.shape == (
             30,
             30,
         ), f"ESKF.discrete_error_matrices: Van Loan matrix shape incorrect {omega.shape}"
-        VanLoanMatrix = la.expm(V)  # This can be slow...
+        VanLoanMatrix = la.expm(V*Ts)  # This can be slow...
 
-        Ad = np.zeros((15, 15))
-        GQGd = np.zeros((15, 15))
+        Ad = VanLoanMatrix[SECOND_HALF_INDEX * SECOND_HALF_INDEX]
+        GQGd = VanLoanMatrix[FIRST_HALF_INDEX * SECOND_HALF_INDEX]
+
 
         assert Ad.shape == (
             15,
