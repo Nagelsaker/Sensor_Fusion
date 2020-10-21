@@ -114,18 +114,18 @@ class ESKF:
 
         R = quaternion_to_rotation_matrix(quaternion, debug=self.debug)
 
-        position_prediction = position + Ts*R @ velocity  # TODO: Calculate predicted position
+        position_prediction = position + Ts* R @ velocity  # TODO: Calculate predicted position
         # TODO: Calculate predicted velocity
-        velocity_prediction = velocity + Ts* R @ acceleration
+        velocity_prediction = velocity + Ts * R @ acceleration
         
         # TODO: Calculate predicted quaternion
-        quaternion_prediction = quaternion + Ts*0.5*cross_product_matrix(quaternion[1:4]) @ R @ omega
+        quaternion_prediction = quaternion + Ts*0.5*cross_product_matrix(quaternion[1:4]) @ omega
 
         # Normalize quaternion
         quaternion_prediction = quaternion_prediction/(np.sqrt(quaternion[0]**2 + quaternion[1]**2 + quaternion[2]**2 + quaternion[3]**2)) # TODO: Normalize
 
-        acceleration_bias_prediction = acceleration_bias - Ts*(self.p_acc * np.eye(3) @ acceleration)  # TODO: Calculate predicted acceleration bias
-        gyroscope_bias_prediction = gyroscope_bias - Ts*(self.p_gyro * np.eye(3) @ omega)  # TODO: Calculate predicted gyroscope bias
+        acceleration_bias_prediction = acceleration_bias - Ts*(self.p_acc * np.eye(3) @ R @ acceleration) #må acceleration roteres her? -tror det. I state står det oppført a_b  # TODO: Calculate predicted acceleration bias
+        gyroscope_bias_prediction = gyroscope_bias - Ts*(self.p_gyro * np.eye(3) @ R @ omega)  # TODO: Calculate predicted gyroscope bias
 
         x_nominal_predicted = np.concatenate(
             (
@@ -328,7 +328,7 @@ class ESKF:
 
         Ad, GQGd = self.discrete_error_matrices(x_nominal, acceleration, omega, Ts)
 
-        F = la.expm(Ts*Ad)
+        F = la.expm(Ts*Ad)                                                              #usikker på om dette er riktig.
         P_predicted = F @ P @ F.T + Ad.T @ GQGd
 
         assert P_predicted.shape == (
@@ -436,12 +436,10 @@ class ESKF:
 
         q = x_nominal[ATT_IDX]
         d_theta = 0.5*delta_x[ERR_ATT_IDX]
-        att_injected = np.ndarray([q[0]*1 - q[1:4] @ d_theta.T])
-        att_injected.extend(
-            q[0]*d_theta + 1*q[1:4] + cross_product_matrix(q) @ d_theta
-        )
+        
+        attitude_injected = np.append([q[0]*1 - q[1:4] @ d_theta.T], [q[0]*d_theta + 1*q[1:4] + cross_product_matrix(q) @ d_theta], axis=1)
           # TODO: Inject attitude
-        x_injected[ATT_IDX] = att_injected[ATT_IDX]/(np.linalg.norm([att_injected]))   # TODO: Normalize quaternion
+        x_injected[ATT_IDX] = attitude_injected[ATT_IDX]/(np.linalg.norm([attitude_injected]))   # TODO: Normalize quaternion
 
         # Covariance
         G_injected = np.zeros((1,))  # TODO: Compensate for injection in the covariances
