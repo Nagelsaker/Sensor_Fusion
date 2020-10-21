@@ -442,10 +442,8 @@ class ESKF:
         x_injected[ATT_IDX] = attitude_injected[ATT_IDX]/(np.linalg.norm([attitude_injected]))   # TODO: Normalize quaternion
 
         # Covariance
-        G_injected = np.zeros((1,))  # TODO: Compensate for injection in the covariances
-        P_injected = np.zeros(
-            (15, 15)
-        )  # TODO: Compensate for injection in the covariances
+        G_injected = np.eye(3) - 0.5*cross_product_matrix(x_injected(ATT_IDX))   #sverre: 10.86  # TODO: Compensate for injection in the covariances
+        P_injected = G_injected @ P[ATT_IDX] @ G_injected.T  # TODO: Compensate for injection in the covariances
 
         assert x_injected.shape == (
             16,
