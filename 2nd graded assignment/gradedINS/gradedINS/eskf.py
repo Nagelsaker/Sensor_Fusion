@@ -381,12 +381,12 @@ class ESKF:
         gyro_bias = self.S_g @ x_nominal[GYRO_BIAS_IDX]
 
         # debias IMU measurements
-        acceleration = np.zeros((3,))
-        omega = np.zeros((3,))
+        acceleration = r_z_acc - acc_bias
+        omega = r_z_gyro - gyro_bias
 
         # perform prediction
-        x_nominal_predicted = np.zeros((16,))
-        P_predicted = np.zeros((15, 15))
+        x_nominal_predicted = self.predict_nominal(x_nominal, acceleration, omega, Ts)
+        P_predicted = self.predict_covariance(x_nominal, P, acceleration, omega, Ts)
 
         assert x_nominal_predicted.shape == (
             16,
