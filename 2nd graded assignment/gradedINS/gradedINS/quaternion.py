@@ -38,8 +38,8 @@ def quaternion_product(ql: np.ndarray, qr: np.ndarray) -> np.ndarray:
 
     quaternion = np.zeros((4,)) 
 
-    quaternion[0] = ql[0]*qr[0] - ql[1:4]*qr[1:4].T
-    quaternion[1:4] = qr[0]*ql[1:4] + ql[0]*qr[1:4] + utils.cross_product_matrix[ql]*qr
+    quaternion[0] = ql[0]*qr[0] - ql[1:4] @ qr[1:4].T
+    quaternion[1:4] = qr[0]*ql[1:4] + ql[0]*qr[1:4] + utils.cross_product_matrix(ql) @ qr
 
     # Ensure result is of correct shape
     quaternion = quaternion.ravel()

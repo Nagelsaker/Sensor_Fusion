@@ -432,9 +432,16 @@ class ESKF:
         DTX_IDX = POS_IDX + VEL_IDX + ERR_ACC_BIAS_IDX + ERR_GYRO_BIAS_IDX
 
         x_injected = x_nominal.copy()
-        # TODO: Inject error state into nominal state (except attitude / quaternion)
-        # TODO: Inject attitude
-        # TODO: Normalize quaternion
+        x_injected[INJ_IDX] = x_injected[INJ_IDX] + delta_x[DTX_IDX]    # TODO: Inject error state into nominal state (except attitude / quaternion)
+
+        q = x_nominal[ATT_IDX]
+        d_theta = 0.5*delta_x[ERR_ATT_IDX]
+        att_injected = np.ndarray([q[0]*1 - q[1:4] @ d_theta.T])
+        att_injected.extend(
+            q[0]*d_theta + 1*q[1:4] + cross_product_matrix(q) @ d_theta
+        )
+          # TODO: Inject attitude
+        x_injected[ATT_IDX] = att_injected[ATT_IDX]/(np.linalg.norm([att_injected]))   # TODO: Normalize quaternion
 
         # Covariance
         G_injected = np.zeros((1,))  # TODO: Compensate for injection in the covariances
