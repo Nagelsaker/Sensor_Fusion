@@ -190,7 +190,7 @@ doGNSS: bool = True  # TODO: Set this to False if you want to check that the pre
 GNSSk: int = 0  # keep track of current step in GNSS measurements
 for k in tqdm.trange(N):
     if doGNSS and timeIMU[k] >= timeGNSS[GNSSk]:
-        NIS[GNSSk] = # TODO:
+        NIS[GNSSk] = ESKF.NIS_GNSS_position() # TODO:
 
         x_est[k], P_est[k] = # TODO:
         assert np.all(np.isfinite(P_est[k])), f"Not finite P_pred at index {k}"
