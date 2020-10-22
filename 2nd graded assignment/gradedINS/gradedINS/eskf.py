@@ -497,9 +497,14 @@ class ESKF:
             3,
         ), f"ESKF.innovation_GNSS: lever_arm shape incorrect {lever_arm.shape}"
 
-        H = np.zeros((1,))  # TODO: measurement matrix
+        Hx = np.zeros(3, 16)  # TODO: measurement matrix
+        Hx[:, 0:3] = np.eye(3)
+        q = x_nominal[ATT_IDX]
+        X = np.eye(16, 15)
+        X[ATT_IDX * ATT_IDX] = 0.5*np.array([-q[1], -q[2], -q[3]], [q[0], -q[3], q[2]], [q[3], q[0], -q[1]], [-q[2], q[1], q[0]]) #blir det riktig å bruke attituden til x_nominal?
+        H = Hx @ X #sverre: 10.76           Blir dette riktige dimensjoner?
 
-        v = np.zeros((3,))  # TODO: innovation
+        v = x_nominal - H @ z_GNSS_position  # TODO: innovation
 
         # leverarm compensation
         if not np.allclose(lever_arm, 0):
@@ -507,7 +512,7 @@ class ESKF:
             H[:, ERR_ATT_IDX] = -R @ cross_product_matrix(lever_arm, debug=self.debug)
             v -= R @ lever_arm
 
-        S = np.zeros((3, 3))  # TODO: innovation covariance
+        S = H @ P @ H.T + R_GNSS  # TODO: innovation covariance
 
         assert v.shape == (3,), f"ESKF.innovation_GNSS: v shape incorrect {v.shape}"
         assert S.shape == (3, 3), f"ESKF.innovation_GNSS: S shape incorrect {S.shape}"
@@ -560,7 +565,12 @@ class ESKF:
             x_nominal, P, z_GNSS_position, R_GNSS, lever_arm
         )
 
-        H = np.zeros((1,))  # TODO: measurement matrix
+        Hx = np.zeros(3, 16)  # TODO: measurement matrix
+        Hx[:, 0:3] = np.eye(3)
+        q = x_nominal[ATT_IDX]
+        X = np.eye(16, 15)
+        X[ATT_IDX * ATT_IDX] = 0.5*np.array([-q[1], -q[2], -q[3]], [q[0], -q[3], q[2]], [q[3], q[0], -q[1]], [-q[2], q[1], q[0]]) #blir det riktig å bruke attituden til x_nominal?
+        H = Hx @ X #sverre: 10.76 
 
         # in case of a specified lever arm
         if not np.allclose(lever_arm, 0):
@@ -568,12 +578,14 @@ class ESKF:
             H[:, ERR_ATT_IDX] = -R @ cross_product_matrix(lever_arm, debug=self.debug)
 
         # KF error state update
-        W = np.zeros((1,))  # TODO: Kalman gain
-        delta_x = np.zeros((15,))  # TODO: delta x
+        W = P @ H.T @ np.linalg.inv(S) # sverre: 10.75 TODO: Kalman gain
+        #delta_x = np.zeros((15,))  # TODO: delta x
+        delta_x = W @ innovation #sverre: delta_x (15,)
 
         Jo = I - W @ H  # for Joseph form
 
-        P_update = np.zeros((15, 15))  # TODO: P update
+        # TODO: P update
+        P_update = (np.eye(15) - W @ H) @ P @ (np.eye(15) - W @ H).T + W @ R @ W.T #sverre: 4.10 (numerically faster)
 
         # error state injection
         x_injected, P_injected = self.inject(x_nominal, delta_x, P_update)
@@ -632,7 +644,7 @@ class ESKF:
             x_nominal, P, z_GNSS_position, R_GNSS, lever_arm
         )
 
-        NIS = 0  # TODO: Calculate NIS
+        NIS = v.T @ np.linalg.inv(S) @ V  # TODO: Calculate NIS
 
         assert NIS >= 0, "EKSF.NIS_GNSS_positionNIS: NIS not positive"
 
@@ -660,17 +672,17 @@ class ESKF:
             16,
         ), f"ESKF.delta_x: x_true shape incorrect {x_true.shape}"
 
-        delta_position = np.zeros((3,))  # TODO: Delta position
-        delta_velocity = np.zeros((3,))  # TODO: Delta velocity
+        delta_position = x_true[POS_IDX] - x_nominal[POS_IDX]  # TODO: Delta position
+        delta_velocity = x_true[VEL_IDX] - x_nominal[VEL_IDX]  # TODO: Delta velocity
 
-        quaternion_conj = np.array([1, 0, 0, 0])  # TODO: Conjugate of quaternion
+        quaternion_conj = x_nominal @ np.array([1, -1, -1, -1]).T  # TODO: Conjugate of quaternion
 
-        delta_quaternion = np.array([1, 0, 0, 0])  # TODO: Error quaternion
-        delta_theta = np.zeros((3,))
+        delta_quaternion = quaternion_product(quaternion_conj, x_true[ATT_IDX])  # TODO: Error quaternion
+        delta_theta = 2*delta_quaternion[1:4] #sverre: brukte hinte i oppgaven Im(delta_q) ~ 0.5*delta_theta
 
         # Concatenation of bias indices
         BIAS_IDX = ACC_BIAS_IDX + GYRO_BIAS_IDX
-        delta_bias = np.zeros((6,))  # TODO: Error biases
+        delta_bias = x_true[BIAS_IDX] - x_nominal[BIAS_IDX]  # TODO: Error biases
 
         d_x = np.concatenate((delta_position, delta_velocity, delta_theta, delta_bias))
 
@@ -706,12 +718,12 @@ class ESKF:
 
         d_x = cls.delta_x(x_nominal, x_true)
 
-        NEES_all = 0  # TODO: NEES all
-        NEES_pos = 0  # TODO: NEES position
-        NEES_vel = 0  # TODO: NEES velocity
-        NEES_att = 0  # TODO: NEES attitude
-        NEES_accbias = 0  # TODO: NEES accelerometer bias
-        NEES_gyrobias = 0  # TODO: NEES gyroscope bias
+        NEES_all = d_x.T @ np.linalg.inv(P) @ d_x  # TODO: NEES all
+        NEES_pos = d_x[POS_IDX].T @ np.linalg.inv(P) @ d_x[POS_IDX]  # TODO: NEES position
+        NEES_vel = d_x[VEL_IDX].T @ np.linalg.inv(P) @ d_x[VEL_IDX]  # TODO: NEES velocity
+        NEES_att = d_x[ATT_IDX].T @ np.linalg.inv(P) @ d_x[ATT_IDX]  # TODO: NEES attitude
+        NEES_accbias = d_x[ACC_BIAS_IDX].T @ np.linalg.inv(P) @ d_x[ACC_BIAS_IDX]  # TODO: NEES accelerometer bias
+        NEES_gyrobias = d_x[GYRO_BIAS_IDX].T @ np.linalg.inv(P) @ d_x[GYRO_BIAS_IDX]  # TODO: NEES gyroscope bias
 
         NEESes = np.array(
             [NEES_all, NEES_pos, NEES_vel, NEES_att, NEES_accbias, NEES_gyrobias]
