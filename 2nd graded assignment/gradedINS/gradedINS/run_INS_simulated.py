@@ -89,7 +89,9 @@ except Exception as e:
     )
 
 # %% load data and plot
-filename_to_load = "task_simulation.mat"
+#import os
+#THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
+filename_to_load = "gradedINS/gradedINS/task_simulation.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 
 S_a = loaded_data["S_a"]
@@ -111,6 +113,9 @@ gnss_steps = len(z_GNSS)
 # IMU noise values for STIM300, based on datasheet and simulation sample rate
 # Continous noise
 # TODO: What to remove here?
+
+#studass mente vi måtte kommentere ut alt dette og tune på nytt selv (se de seks parametrene som blir hentet inn i eskf)
+###########################################################################################
 cont_gyro_noise_std = 4.36e-5  # (rad/s)/sqrt(Hz)
 cont_acc_noise_std = 1.167e-3  # (m/s**2)/sqrt(Hz)
 
@@ -126,8 +131,10 @@ cont_rate_bias_driving_noise_std = (
 
 acc_bias_driving_noise_std = 4e-3
 cont_acc_bias_driving_noise_std = 6 * acc_bias_driving_noise_std / np.sqrt(1 / dt)
+##########################################################################################
 
 # Position and velocity measurement
+#bør være ganske lavt, 0.05 i x og y f.eks.
 p_std = np.array([0.3, 0.3, 0.5])  # Measurement noise
 R_GNSS = np.diag(p_std ** 2)
 
@@ -172,6 +179,7 @@ x_pred[0, VEL_IDX] = np.array([20, 0, 0])  # starting at 20 m/s due north
 x_pred[0, 6] = 1  # no initial rotation: nose to North, right to East, and belly down
 
 # These have to be set reasonably to get good results
+#sverre: hvor sikker der du på at du er i nærheten av den initielle tilstanden? Bare sørg for at den kommer i gang 
 P_pred[0][POS_IDX ** 2] = np.eye(3)# TODO
 P_pred[0][VEL_IDX ** 2] = np.eye(3)# TODO
 P_pred[0][ERR_ATT_IDX ** 2] = np.eye(3)# TODO # error rotation vector (not quat)
@@ -184,22 +192,23 @@ dummy = eskf.update_GNSS_position(x_pred[0], P_pred[0], z_GNSS[0], R_GNSS, lever
 # %% Run estimation
 # run this file with 'python -O run_INS_simulated.py' to turn of assertions and get about 8/5 speed increase for longer runs
 
-N: int = steps # TODO: choose a small value to begin with (500?), and gradually increase as you OK results
+N: int = 500 #steps # TODO: choose a small value to begin with (500?), and gradually increase as you OK results
+#sverre: husk at z_gnss bare inneholder 900 elementer, som er mindre enn de andre datalistene. 
 doGNSS: bool = True  # TODO: Set this to False if you want to check that the predictions make sense over reasonable time lenghts
 
 GNSSk: int = 0  # keep track of current step in GNSS measurements
-for k in tqdm.trange(N):
+for k in tqdm(range(N)):
     if doGNSS and timeIMU[k] >= timeGNSS[GNSSk]:
-        NIS[GNSSk] = ESKF.NIS_GNSS_position() # TODO:
+        NIS[GNSSk] = eskf.NIS_GNSS_position(x_pred[k], P_pred[k], z_GNSS[k], R_GNSS, lever_arm) # TODO:
 
-        x_est[k], P_est[k] = # TODO:
+        x_est[k], P_est[k] = eskf.update_GNSS_position(x_pred[k], P_pred[k], z_GNSS[k], R_GNSS, lever_arm) # TODO:
         assert np.all(np.isfinite(P_est[k])), f"Not finite P_pred at index {k}"
 
         GNSSk += 1
     else:
         # no updates, so let us take estimate = prediction
-        x_est[k] = # TODO
-        P_est[k] = # TODO
+        x_est[k] = x_pred[k] # TODO sverre: la til x_pred
+        P_est[k] = P_pred[k] # TODO sverre: la til P_pred
 
     delta_x[k] = eskf.delta_x(x_est[k], x_true[k])
     (
@@ -209,10 +218,10 @@ for k in tqdm.trange(N):
         NEES_att[k],
         NEES_accbias[k],
         NEES_gyrobias[k],
-    ) = # TODO: The true error state at step k
+    ) = eskf.NEESes(x_est[k], P_est[k], x_true[k]) # TODO: The true error state at step k
 
     if k < N - 1:
-        x_pred[k + 1], P_pred[k + 1] = # TODO: Hint: measurements come from the the present and past, not the future
+        x_pred[k + 1], P_pred[k + 1] = eskf.predict(x_pred[k], P_pred[k], z_acceleration[k], z_gyroscope[k], dt) # TODO: Hint: measurements come from the the present and past, not the future
 
     if eskf.debug:
         assert np.all(np.isfinite(P_pred[k])), f"Not finite P_pred at index {k + 1}"
@@ -328,13 +337,13 @@ fig4, axs4 = plt.subplots(2, 1, num=4, clear=True)
 axs4[0].plot(t, np.linalg.norm(delta_x[:N, POS_IDX], axis=1))
 axs4[0].plot(
     np.arange(0, N, 100) * dt,
-    np.linalg.norm(x_true[99:100:N, :3] - z_GNSS[:GNSSk], axis=1),
+    np.linalg.norm(x_true[99:N:100, :3] - z_GNSS[:GNSSk], axis=1),
 )
 axs4[0].set(ylabel="Position error [m]")
 axs4[0].legend(
     [
         f"Estimation error ({np.sqrt(np.mean(np.sum(delta_x[:N, POS_IDX]**2, axis=1)))})",
-        f"Measurement error ({np.sqrt(np.mean(np.sum((x_true[99:100:N, POS_IDX] - z_GNSS[GNSSk - 1])**2, axis=1)))})",
+        f"Measurement error ({np.sqrt(np.mean(np.sum((x_true[99:N:100, POS_IDX] - z_GNSS[GNSSk - 1])**2, axis=1)))})",
     ]
 )
 
@@ -356,7 +365,7 @@ insideCI = np.mean((CI15[0] <= NEES_all) * (NEES_all <= CI15[1]))
 axs5[0].set(
     title=f"Total NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
-axs5[0].set_ylim([0, 50])
+axs5[0].set_ylim([0, 50]) #disse må kanskje endres på for å se NEES veridene. Kan også kommentere ut
 
 axs5[1].plot(t, (NEES_pos[0:N]).T)
 axs5[1].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
