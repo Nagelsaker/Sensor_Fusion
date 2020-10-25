@@ -89,8 +89,8 @@ except Exception as e:
     )
 
 # %% load data and plot
-#import os
-#THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
+import os
+THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 filename_to_load = "gradedINS/gradedINS/task_simulation.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 
@@ -432,6 +432,8 @@ gauss_compare_3  = np.sum(np.random.randn(3, N)**2, axis=0)
 axs6[2].boxplot([NEES_pos[0:N].T, NEES_vel[0:N].T, NEES_att[0:N].T, NEES_accbias[0:N].T, NEES_gyrobias[0:N].T, gauss_compare_3], notch=True)
 axs6[2].legend(['NEES pos', 'NEES vel', 'NEES att', 'NEES accbias', 'NEES gyrobias', 'gauss (3 dim)'])
 plt.grid()
+
+plt.show()
 
 
 # %%
