@@ -116,7 +116,7 @@ gnss_steps = len(z_GNSS)
 
 #studass mente vi måtte kommentere ut alt dette og tune på nytt selv (se de seks parametrene som blir hentet inn i eskf)
 ###########################################################################################
-cont_gyro_noise_std = 4.36e-5  # (rad/s)/sqrt(Hz)
+cont_gyro_noise_std = 4.36e-5#4.36e-5  # (rad/s)/sqrt(Hz)
 cont_acc_noise_std = 1.167e-3  # (m/s**2)/sqrt(Hz)
 
 # Discrete sample noise at simulation rate used
@@ -124,7 +124,7 @@ rate_std = 0.5 * cont_gyro_noise_std * np.sqrt(1 / dt)
 acc_std = 0.5 * cont_acc_noise_std * np.sqrt(1 / dt)
 
 # Bias values
-rate_bias_driving_noise_std = 5e-5
+rate_bias_driving_noise_std = 5e-5 #5e-5
 cont_rate_bias_driving_noise_std = (
     (1 / 3) * rate_bias_driving_noise_std / np.sqrt(1 / dt)
 )
@@ -135,7 +135,7 @@ cont_acc_bias_driving_noise_std = 6 * acc_bias_driving_noise_std / np.sqrt(1 / d
 
 # Position and velocity measurement
 #bør være ganske lavt, 0.05 i x og y f.eks.
-p_std = np.array([0.3, 0.3, 0.5])  # Measurement noise
+p_std = np.array([0.05, 0.05, 0.5])  # Measurement noise
 R_GNSS = np.diag(p_std ** 2)
 
 p_acc = 1e-16
@@ -192,7 +192,7 @@ dummy = eskf.update_GNSS_position(x_pred[0], P_pred[0], z_GNSS[0], R_GNSS, lever
 # %% Run estimation
 # run this file with 'python -O run_INS_simulated.py' to turn of assertions and get about 8/5 speed increase for longer runs
 
-N: int = 500 #steps # TODO: choose a small value to begin with (500?), and gradually increase as you OK results
+N: int = 900 #steps # TODO: choose a small value to begin with (500?), and gradually increase as you OK results
 #sverre: husk at z_gnss bare inneholder 900 elementer, som er mindre enn de andre datalistene. 
 doGNSS: bool = True  # TODO: Set this to False if you want to check that the predictions make sense over reasonable time lenghts
 
@@ -298,7 +298,7 @@ axs3[1].legend(
 
 # quick wrap func
 wrap_to_pi = lambda rads: (rads + np.pi) % (2 * np.pi) - np.pi
-eul_error = wrap_to_pi(eul[:N] - eul_true[:N]) * 180 / np.pi
+eul_error = wrap_to_pi(eul[:N] - eul_true[:N]) #* 180 / np.pi
 axs3[2].plot(t, eul_error)
 axs3[2].set(ylabel="Euler angles error [deg]")
 axs3[2].legend(
@@ -309,13 +309,15 @@ axs3[2].legend(
     ]
 )
 
+
+# Error, should be 9, 10 and 11 instead of index 12, 13, 14
 axs3[3].plot(t, delta_x[:N, ERR_ACC_BIAS_IDX])
 axs3[3].set(ylabel="Accl bias error [m/s^2]")
 axs3[3].legend(
     [
-        f"$x$ ({np.sqrt(np.mean(delta_x[:N, 12]**2))})",
-        f"$y$ ({np.sqrt(np.mean(delta_x[:N, 13]**2))})",
-        f"$z$ ({np.sqrt(np.mean(delta_x[:N, 14]**2))})",
+        f"$x$ ({np.sqrt(np.mean(delta_x[:N, 9]**2))})",
+        f"$y$ ({np.sqrt(np.mean(delta_x[:N, 10]**2))})",
+        f"$z$ ({np.sqrt(np.mean(delta_x[:N, 11]**2))})",
     ]
 )
 
@@ -349,7 +351,7 @@ axs4[0].legend(
 
 axs4[1].plot(t, np.linalg.norm(delta_x[:N, VEL_IDX], axis=1))
 axs4[1].set(ylabel="Speed error [m/s]")
-axs4[1].legend([f"RMSE: {np.sqrt(np.mean(np.sum(delta_x[:N, VEL_IDX]**2, axis=0)))}"])
+axs4[1].legend([f"RMSE: {np.sqrt(np.mean(np.sum(delta_x[:N, VEL_IDX]**2, axis=1)))}"]) # Error, axis should be 1 instead of 0
 
 
 # %% Consistency
@@ -434,6 +436,5 @@ axs5[6].set_ylim([0, 20])
 # plt.grid()
 
 plt.show()
-
 
 # %%
