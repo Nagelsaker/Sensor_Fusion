@@ -199,9 +199,9 @@ doGNSS: bool = True  # TODO: Set this to False if you want to check that the pre
 GNSSk: int = 0  # keep track of current step in GNSS measurements
 for k in tqdm(range(N)):
     if doGNSS and timeIMU[k] >= timeGNSS[GNSSk]:
-        NIS[GNSSk] = eskf.NIS_GNSS_position(x_pred[k], P_pred[k], z_GNSS[k], R_GNSS, lever_arm) # TODO:
+        NIS[GNSSk] = eskf.NIS_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm) # TODO:
 
-        x_est[k], P_est[k] = eskf.update_GNSS_position(x_pred[k], P_pred[k], z_GNSS[k], R_GNSS, lever_arm) # TODO:
+        x_est[k], P_est[k] = eskf.update_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm) # TODO:
         assert np.all(np.isfinite(P_est[k])), f"Not finite P_pred at index {k}"
 
         GNSSk += 1
@@ -221,7 +221,7 @@ for k in tqdm(range(N)):
     ) = eskf.NEESes(x_est[k], P_est[k], x_true[k]) # TODO: The true error state at step k
 
     if k < N - 1:
-        x_pred[k + 1], P_pred[k + 1] = eskf.predict(x_pred[k], P_pred[k], z_acceleration[k], z_gyroscope[k], dt) # TODO: Hint: measurements come from the the present and past, not the future
+        x_pred[k + 1], P_pred[k + 1] = eskf.predict(x_est[k], P_est[k], z_acceleration[k], z_gyroscope[k], dt) # sverre: skal det være k+1 for acc og gyro? TODO: Hint: measurements come from the the present and past, not the future
 
     if eskf.debug:
         assert np.all(np.isfinite(P_pred[k])), f"Not finite P_pred at index {k + 1}"
