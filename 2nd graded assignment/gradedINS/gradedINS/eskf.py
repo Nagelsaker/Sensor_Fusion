@@ -280,7 +280,7 @@ class ESKF:
         ), f"ESKF.discrete_error_matrices: Van Loan matrix shape incorrect {omega.shape}"
         VanLoanMatrix = la.expm(V*Ts)  # This can be slow...
 
-        Ad = VanLoanMatrix[SECOND_HALF_INDEX * SECOND_HALF_INDEX]
+        Ad = VanLoanMatrix[SECOND_HALF_INDEX * SECOND_HALF_INDEX].T
         GQGd = VanLoanMatrix[FIRST_HALF_INDEX * SECOND_HALF_INDEX]
 
 
@@ -335,7 +335,8 @@ class ESKF:
 
         Ad, GQGd = self.discrete_error_matrices(x_nominal, acceleration, omega, Ts)
 
-        P_predicted = Ad.T @ P @ Ad + Ad.T @ GQGd # sverre: tror dette er riktig transponering, siden Ad = A.T i følge Van Loans
+        # P_predicted = Ad.T @ P @ Ad + Ad.T @ GQGd # sverre: tror dette er riktig transponering, siden Ad = A.T i følge Van Loans
+        P_predicted = Ad @ P @ Ad.T + Ad @ GQGd # sverre: tror dette er riktig transponering, siden Ad = A.T i følge Van Loans
 
         assert P_predicted.shape == (
             15,
@@ -520,6 +521,9 @@ class ESKF:
 
         v = z_GNSS_position - Hx @ x_nominal  # sverre: bruker Hx her siden den er (3,16) TODO: innovation
 
+        # H = np.block([np.eye(3), np.zeros((3,12))]) # Simon: Hvorfor denne H-en?
+        # v = z_GNSS_position - x_nominal[POS_IDX]    # Simon: Hvorfor denne v-en?
+
         # leverarm compensation
         if not np.allclose(lever_arm, 0):
             R = quaternion_to_rotation_matrix(x_nominal[ATT_IDX], debug=self.debug)
@@ -591,6 +595,8 @@ class ESKF:
         X[9,6:9] = 0.5*np.array([-q[2], q[1], q[0]])
         H = Hx @ X #sverre: 10.76 
 
+        # H = np.block([np.eye(3), np.zeros((3,12))]) # Simon: Hvorfor denne H-en??
+
         # in case of a specified lever arm
         if not np.allclose(lever_arm, 0):
             R = quaternion_to_rotation_matrix(x_nominal[ATT_IDX], debug=self.debug)
@@ -604,7 +610,8 @@ class ESKF:
         Jo = I - W @ H  # for Joseph form
 
         # TODO: P update
-        P_update = Jo @ P @ Jo.T + W @ R @ W.T #sverre: 4.10 (numerically faster) (jospeh form)
+        # P_update = Jo @ P @ Jo.T + W @ R @ W.T #sverre: 4.10 (numerically faster) (jospeh form)
+        P_update = Jo @ P @ Jo.T + W @ R_GNSS @ W.T #sverre: 4.10 (numerically faster) (jospeh form) # Simon: Hvorfor R_GNSS??
 
         # error state injection
         x_injected, P_injected = self.inject(x_nominal, delta_x, P_update)
