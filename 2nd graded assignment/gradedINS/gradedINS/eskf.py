@@ -124,10 +124,12 @@ class ESKF:
         velocity_prediction = velocity + Ts *(R @ acceleration + self.g) #skal denne roteres når det antas at a = R(q)(a_m - a_b) + g?
         
         # TODO: Calculate predicted quaternion
-        q_d =  0.5*quaternion_product(quaternion, euler_to_quaternion(R @ omega))
-        quaternion_prediction = quaternion + Ts*q_d #skal denne uttrykkes i body eller world? Er forskjellige definisjoner av q_dot i boka og i hintet til oppgaven.
-
-        # kappa = Ts * omega #står i hintet at denne skal oppgis i BODY
+        kappa = Ts * omega # sverre: står i hintet at denne skal oppgis i BODY
+        kappa_norm = np.linalg.norm(kappa) # sverre: dette skal være en 2-norm
+        qr = np.zeros(4)
+        qr[0] = np.cos(0.5*kappa_norm)
+        qr[1:4] = np.sin(0.5*kappa_norm)*(kappa.T/kappa_norm)
+        quaternion_prediction = quaternion_product(quaternion, qr.T) # sverre: skal denne uttrykkes i body eller world? Er forskjellige definisjoner av q_dot i boka og i hintet til oppgaven.
 
         # Normalize quaternion
         quaternion_prediction = quaternion_prediction/np.linalg.norm(quaternion_prediction) # TODO: Normalize
