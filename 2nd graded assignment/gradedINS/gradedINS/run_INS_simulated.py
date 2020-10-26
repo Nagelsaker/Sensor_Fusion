@@ -120,27 +120,28 @@ cont_gyro_noise_std = 4.36e-5#4.36e-5  # (rad/s)/sqrt(Hz)
 cont_acc_noise_std = 1.167e-3  # (m/s**2)/sqrt(Hz)
 
 # Discrete sample noise at simulation rate used
-rate_std = 0.5 * cont_gyro_noise_std * np.sqrt(1 / dt)
-acc_std = 0.5 * cont_acc_noise_std * np.sqrt(1 / dt)
+rate_std = 0.5 * cont_gyro_noise_std * np.sqrt(1 / dt)                                  ### skal tunes ###
+acc_std = 0.5 * cont_acc_noise_std * np.sqrt(1 / dt)                                    ### skal tunes ###
 
 # Bias values
-rate_bias_driving_noise_std = 5e-5 #5e-5
-cont_rate_bias_driving_noise_std = (
+rate_bias_driving_noise_std = 5e-5
+cont_rate_bias_driving_noise_std = (                                                    ### skal tunes ###
     (1 / 3) * rate_bias_driving_noise_std / np.sqrt(1 / dt)
 )
 
 acc_bias_driving_noise_std = 4e-3
-cont_acc_bias_driving_noise_std = 6 * acc_bias_driving_noise_std / np.sqrt(1 / dt)
+cont_acc_bias_driving_noise_std = 6 * acc_bias_driving_noise_std / np.sqrt(1 / dt)      ### skal tunes ###
 ##########################################################################################
 
 # Position and velocity measurement
 #bør være ganske lavt, 0.05 i x og y f.eks.
-p_std = np.array([0.05, 0.05, 0.5])  # Measurement noise
+#p_std = np.array([0.3, 0.3, 0.5])  # Measurement noise
+p_std = np.array([0.05, 0.05, 0.5])
 R_GNSS = np.diag(p_std ** 2)
 
-p_acc = 1e-16
+p_acc = 1e-16                                                                           ### skal tunes ###
 
-p_gyro = 1e-16
+p_gyro = 1e-16                                                                          ### skal tunes ###
 
 # %% Estimator
 eskf = ESKF(
@@ -367,7 +368,7 @@ insideCI = np.mean((CI15[0] <= NEES_all) * (NEES_all <= CI15[1]))
 axs5[0].set(
     title=f"Total NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
-axs5[0].set_ylim([0, 50]) #disse må kanskje endres på for å se NEES veridene. Kan også kommentere ut
+# axs5[0].set_ylim([0, 50]) #disse må kanskje endres på for å se NEES veridene. Kan også kommentere ut
 
 axs5[1].plot(t, (NEES_pos[0:N]).T)
 axs5[1].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
@@ -375,7 +376,7 @@ insideCI = np.mean((CI3[0] <= NEES_pos) * (NEES_pos <= CI3[1]))
 axs5[1].set(
     title=f"Position NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
-axs5[1].set_ylim([0, 20])
+# axs5[1].set_ylim([0, 20])
 
 axs5[2].plot(t, (NEES_vel[0:N]).T)
 axs5[2].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
@@ -383,7 +384,7 @@ insideCI = np.mean((CI3[0] <= NEES_vel) * (NEES_vel <= CI3[1]))
 axs5[2].set(
     title=f"Velocity NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
-axs5[2].set_ylim([0, 20])
+# axs5[2].set_ylim([0, 20])
 
 axs5[3].plot(t, (NEES_att[0:N]).T)
 axs5[3].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
@@ -391,7 +392,7 @@ insideCI = np.mean((CI3[0] <= NEES_att) * (NEES_att <= CI3[1]))
 axs5[3].set(
     title=f"Attitude NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
-axs5[3].set_ylim([0, 20])
+# axs5[3].set_ylim([0, 20])
 
 axs5[4].plot(t, (NEES_accbias[0:N]).T)
 axs5[4].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
@@ -399,7 +400,7 @@ insideCI = np.mean((CI3[0] <= NEES_accbias) * (NEES_accbias <= CI3[1]))
 axs5[4].set(
     title=f"Accelerometer NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
-axs5[4].set_ylim([0, 20])
+# axs5[4].set_ylim([0, 20])
 
 axs5[5].plot(t, (NEES_gyrobias[0:N]).T)
 axs5[5].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
@@ -407,7 +408,7 @@ insideCI = np.mean((CI3[0] <= NEES_gyrobias) * (NEES_gyrobias <= CI3[1]))
 axs5[5].set(
     title=f"Gyro bias NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
-axs5[5].set_ylim([0, 20])
+# axs5[5].set_ylim([0, 20])
 
 axs5[6].plot(NIS[:GNSSk])
 axs5[6].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
@@ -415,7 +416,7 @@ insideCI = np.mean((CI3[0] <= NIS) * (NIS <= CI3[1]))
 axs5[6].set(
     title=f"NIS ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
-axs5[6].set_ylim([0, 20])
+# axs5[6].set_ylim([0, 20])
 
 # boxplot
 # fig6, axs6 = plt.subplots(1, 3)
