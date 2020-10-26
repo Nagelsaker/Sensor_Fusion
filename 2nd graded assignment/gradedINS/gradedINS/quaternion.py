@@ -28,9 +28,11 @@ def quaternion_product(ql: np.ndarray, qr: np.ndarray) -> np.ndarray:
         )
 
     if qr.shape == (4,):
-        q_right = qr.copy()
+        eta_right = qr[0]
+        epsilon_right = qr[1:].reshape((3,1))
     elif qr.shape == (3,):
-        q_right = np.concatenate(([0], qr))
+        eta_right = 0
+        epsilon_right = qr.reshape((3,1))
     else:
         raise RuntimeError(
             f"utils.quaternion_product: Quaternion multiplication error, right quaternion wrong shape: {qr.shape}"
@@ -38,8 +40,8 @@ def quaternion_product(ql: np.ndarray, qr: np.ndarray) -> np.ndarray:
 
     quaternion = np.zeros((4,)) 
 
-    quaternion[0] = ql[0]*qr[0] - ql[1:4].T @ qr[1:4]
-    quaternion[1:4] = qr[0]*ql[1:4] + ql[0]*qr[1:4] + utils.cross_product_matrix(ql[1:4]) @ qr[1:4]
+    quaternion[0] = eta_left*eta_right - epsilon_left.T@epsilon_right
+    quaternion[1:4] = (eta_right*epsilon_left + eta_left*epsilon_right + utils.cross_product_matrix(epsilon_left)@epsilon_right).reshape(3,)
 
     # Ensure result is of correct shape
     quaternion = quaternion.ravel()
