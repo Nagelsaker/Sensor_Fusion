@@ -117,13 +117,13 @@ class ESKF:
 
         R = quaternion_to_rotation_matrix(quaternion, debug=self.debug)
 
-        position_prediction = position + Ts*velocity + Ts**2 * 0.5 * acceleration  # sverre: velocity er allerede i WORLD TODO: Calculate predicted position 
+        position_prediction = position + Ts*velocity + Ts**2 * 0.5 * (R @ acceleration + self.g)  # sverre: velocity er allerede i WORLD TODO: Calculate predicted position 
         # TODO: Calculate predicted velocity
         velocity_prediction = velocity + Ts *(R @ acceleration + self.g) #skal denne roteres når det antas at a = R(q)(a_m - a_b) + g?
         
         # TODO: Calculate predicted quaternion
         kappa = Ts * omega # sverre: står i hintet at denne skal oppgis i BODY
-        kappa_norm = np.linalg.norm(kappa) # sverre: dette skal være en 2-norm
+        kappa_norm = np.linalg.norm(kappa) # sverre: dette skal være en 2-norm #############er dette riktig norm?##########
         qr = np.zeros(4)
         qr[0] = np.cos(0.5*kappa_norm)
         qr[1:4] = np.sin(0.5*kappa_norm)*(kappa.T/kappa_norm)
@@ -132,8 +132,8 @@ class ESKF:
         # Normalize quaternion
         quaternion_prediction = quaternion_prediction/np.linalg.norm(quaternion_prediction) # TODO: Normalize
 
-        acceleration_bias_prediction = acceleration_bias - Ts*(self.p_acc * np.eye(3) @ acceleration) # TODO: Calculate predicted acceleration bias
-        gyroscope_bias_prediction = gyroscope_bias - Ts*(self.p_gyro * np.eye(3) @ omega)  # TODO: Calculate predicted gyroscope bias
+        acceleration_bias_prediction = acceleration_bias - Ts * self.p_acc * acceleration_bias # TODO: Calculate predicted acceleration bias
+        gyroscope_bias_prediction = gyroscope_bias - Ts * self.p_gyro * gyroscope_bias  # TODO: Calculate predicted gyroscope bias
 
         x_nominal_predicted = np.concatenate(
             (
@@ -272,7 +272,7 @@ class ESKF:
         V = np.zeros((30, 30))
         V[FIRST_HALF_INDEX * FIRST_HALF_INDEX] = -A
         V[FIRST_HALF_INDEX * SECOND_HALF_INDEX] = G @ self.Q_err @ G.T # sverre: tror det er riktig Q_err, ja. Se ligning 10.69
-        V[SECOND_HALF_INDEX * SECOND_HALF_INDEX] = A
+        V[SECOND_HALF_INDEX * SECOND_HALF_INDEX] = A.T
         
         assert V.shape == (
             30,
