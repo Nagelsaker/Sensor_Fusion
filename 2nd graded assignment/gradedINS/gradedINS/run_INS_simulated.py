@@ -91,7 +91,7 @@ except Exception as e:
 # %% load data and plot
 import os
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
-filename_to_load = "gradedINS/gradedINS/task_simulation.mat"
+filename_to_load = "task_simulation.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 
 S_a = loaded_data["S_a"]
