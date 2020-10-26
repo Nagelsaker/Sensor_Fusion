@@ -273,7 +273,7 @@ class ESKF:
 
         V = np.zeros((30, 30))
         V[FIRST_HALF_INDEX * FIRST_HALF_INDEX] = -A
-        V[SECOND_HALF_INDEX * FIRST_HALF_INDEX] = G @ self.Q_err @ G.T # Riktig Q??
+        V[FIRST_HALF_INDEX * SECOND_HALF_INDEX] = G @ self.Q_err @ G.T
         V[SECOND_HALF_INDEX * SECOND_HALF_INDEX] = A
         
         assert V.shape == (
@@ -336,9 +336,7 @@ class ESKF:
         ), f"ESKF.predict_covariance: omega shape incorrect {omega.shape}"
 
         Ad, GQGd = self.discrete_error_matrices(x_nominal, acceleration, omega, Ts)
-
-        F = la.expm(Ts*Ad)                                                              #usikker på om dette er riktig.
-        P_predicted = F @ P @ F.T + Ad.T @ GQGd
+        P_predicted = Ad @ P @ Ad.T + Ad.T @ GQGd
 
         assert P_predicted.shape == (
             15,
@@ -583,7 +581,9 @@ class ESKF:
         Hx = np.zeros((3, 16))  # TODO: measurement matrix
         Hx[:, 0:3] = np.eye(3)
         q = x_nominal[ATT_IDX]
-        X = np.eye(16, 15)
+        X = np.zeros((16, 15))
+        X[0:6,0:6] = np.eye(6)
+        X[10:16,9:15] = np.eye(6)
         X[6,6:9] = 0.5*np.array([-q[1], -q[2], -q[3]]) 
         X[7,6:9] = 0.5*np.array([q[0], -q[3], q[2]])
         X[8,6:9] = 0.5*np.array([q[3], q[0], -q[1]])
