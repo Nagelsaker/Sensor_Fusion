@@ -416,22 +416,22 @@ axs5[6].set(
 axs5[6].set_ylim([0, 20])
 
 # boxplot
-fig6, axs6 = plt.subplots(1, 3)
+# fig6, axs6 = plt.subplots(1, 3)
 
-gauss_compare = np.sum(np.random.randn(3, GNSSk)**2, axis=0)
-axs6[0].boxplot([NIS[0:GNSSk], gauss_compare], notch=True)
-axs6[0].legend(['NIS', 'gauss'])
-plt.grid()
+# gauss_compare = np.sum(np.random.randn(3, GNSSk)**2, axis=0)
+# axs6[0].boxplot([NIS[0:GNSSk], gauss_compare], notch=True)
+# axs6[0].legend(['NIS', 'gauss'])
+# plt.grid()
 
-gauss_compare_15 = np.sum(np.random.randn(15, N)**2, axis=0)
-axs6[1].boxplot([NEES_all[0:N].T, gauss_compare_15], notch=True)
-axs6[1].legend(['NEES', 'gauss (15 dim)'])
-plt.grid()
+# gauss_compare_15 = np.sum(np.random.randn(15, N)**2, axis=0)
+# axs6[1].boxplot([NEES_all[0:N].T, gauss_compare_15], notch=True)
+# axs6[1].legend(['NEES', 'gauss (15 dim)'])
+# plt.grid()
 
-gauss_compare_3  = np.sum(np.random.randn(3, N)**2, axis=0)
-axs6[2].boxplot([NEES_pos[0:N].T, NEES_vel[0:N].T, NEES_att[0:N].T, NEES_accbias[0:N].T, NEES_gyrobias[0:N].T, gauss_compare_3], notch=True)
-axs6[2].legend(['NEES pos', 'NEES vel', 'NEES att', 'NEES accbias', 'NEES gyrobias', 'gauss (3 dim)'])
-plt.grid()
+# gauss_compare_3  = np.sum(np.random.randn(3, N)**2, axis=0)
+# axs6[2].boxplot([NEES_pos[0:N].T, NEES_vel[0:N].T, NEES_att[0:N].T, NEES_accbias[0:N].T, NEES_gyrobias[0:N].T, gauss_compare_3], notch=True)
+# axs6[2].legend(['NEES pos', 'NEES vel', 'NEES att', 'NEES accbias', 'NEES gyrobias', 'gauss (3 dim)'])
+# plt.grid()
 
 plt.show()
 

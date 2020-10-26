@@ -119,20 +119,21 @@ class ESKF:
 
         R = quaternion_to_rotation_matrix(quaternion, debug=self.debug)
 
-        position_prediction = position + Ts* R @ velocity  # TODO: Calculate predicted position
+        position_prediction = position + Ts*velocity + Ts**2 * 0.5 * acceleration  # sverre: velocity er allerede i WORLD TODO: Calculate predicted position 
         # TODO: Calculate predicted velocity
-        velocity_prediction = velocity + Ts * R @ acceleration
+        velocity_prediction = velocity + Ts *(R @ acceleration + self.g) #skal denne roteres når det antas at a = R(q)(a_m - a_b) + g?
         
         # TODO: Calculate predicted quaternion
-        temp_q = np.zeros(4,)
-        temp_q[1:4] = Ts*0.5*cross_product_matrix(quaternion[1:4]) @ omega.T ##############################dette må sjekkes opp######################
-        quaternion_prediction = quaternion + temp_q
+        q_d =  0.5*quaternion_product(quaternion, euler_to_quaternion(R @ omega))
+        quaternion_prediction = quaternion + Ts*q_d #skal denne uttrykkes i body eller world? Er forskjellige definisjoner av q_dot i boka og i hintet til oppgaven.
+
+        # kappa = Ts * omega #står i hintet at denne skal oppgis i BODY
 
         # Normalize quaternion
-        quaternion_prediction = quaternion_prediction/(np.sqrt(quaternion[0]**2 + quaternion[1]**2 + quaternion[2]**2 + quaternion[3]**2)) # TODO: Normalize
+        quaternion_prediction = quaternion_prediction/np.linalg.norm(quaternion_prediction) # TODO: Normalize
 
-        acceleration_bias_prediction = acceleration_bias - Ts*(self.p_acc * np.eye(3) @ R @ acceleration) #må acceleration roteres her? -tror det. I state står det oppført a_b  # TODO: Calculate predicted acceleration bias
-        gyroscope_bias_prediction = gyroscope_bias - Ts*(self.p_gyro * np.eye(3) @ R @ omega)  # TODO: Calculate predicted gyroscope bias
+        acceleration_bias_prediction = acceleration_bias - Ts*(self.p_acc * np.eye(3) @ acceleration) # TODO: Calculate predicted acceleration bias
+        gyroscope_bias_prediction = gyroscope_bias - Ts*(self.p_gyro * np.eye(3) @ omega)  # TODO: Calculate predicted gyroscope bias
 
         x_nominal_predicted = np.concatenate(
             (
@@ -446,7 +447,7 @@ class ESKF:
         d_theta = delta_x[ERR_ATT_IDX]
         qr[1:4] = 0.5*d_theta
         attitude_injected = quaternion_product(ql, qr)  # TODO: Inject attitude
-        x_injected[ATT_IDX] = attitude_injected/(np.linalg.norm([attitude_injected]))   # TODO: Normalize quaternion
+        x_injected[ATT_IDX] = attitude_injected/np.linalg.norm(attitude_injected)   # TODO: Normalize quaternion
 
         # Covariance
         G_injected = np.eye(15) #sverre: 10.86  # TODO: Compensate for injection in the covariances

@@ -38,7 +38,7 @@ def quaternion_product(ql: np.ndarray, qr: np.ndarray) -> np.ndarray:
 
     quaternion = np.zeros((4,)) 
 
-    quaternion[0] = ql[0]*qr[0] - ql[1:4] @ qr[1:4].T
+    quaternion[0] = ql[0]*qr[0] - ql[1:4].T @ qr[1:4]
     quaternion[1:4] = qr[0]*ql[1:4] + ql[0]*qr[1:4] + utils.cross_product_matrix(ql[1:4]) @ qr[1:4]
 
     # Ensure result is of correct shape
@@ -76,7 +76,7 @@ def quaternion_to_rotation_matrix(
             f"quaternion.quaternion_to_rotation_matrix: Quaternion to multiplication error, quaternion shape incorrect: {quaternion.shape}"
         )
 
-    R = np.eye(3, dtype=int) + 2*quaternion[0]*utils.cross_product_matrix(quaternion[1:4]) + 2*utils.cross_product_matrix(quaternion[1:4])*utils.cross_product_matrix(quaternion[1:4])
+    R = np.eye(3, dtype=int) + 2*quaternion[0]*utils.cross_product_matrix(quaternion[1:4]) + 2*utils.cross_product_matrix(quaternion[1:4]) @ utils.cross_product_matrix(quaternion[1:4])
 
     if debug:
         assert np.allclose(
@@ -107,7 +107,7 @@ def quaternion_to_euler(quaternion: np.ndarray) -> np.ndarray:
 
     phi = np.arctan2(2*(quaternion[3]*quaternion[2]+quaternion[0]*quaternion[1]), quaternion[0]**2 - quaternion[1]**2 - quaternion[2]**2 + quaternion[3]**2)
     theta = np.arcsin(2*(quaternion[0]*quaternion[2] - quaternion[1]*quaternion[3]))
-    psi = np.arctan2(2*(quaternion[1]*quaternion[3] + quaternion[0]*quaternion[3]), quaternion[0]**2 + quaternion[1]**2 - quaternion[2]**2 - quaternion[3]**2)
+    psi = np.arctan2(2*(quaternion[1]*quaternion[2] + quaternion[0]*quaternion[3]), quaternion[0]**2 + quaternion[1]**2 - quaternion[2]**2 - quaternion[3]**2)
 
     euler_angles = np.array([phi, theta, psi])
     assert euler_angles.shape == (
