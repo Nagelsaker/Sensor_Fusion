@@ -29,9 +29,7 @@ ERR_ATT_IDX = CatSlice(start=6, stop=9)
 ERR_ACC_BIAS_IDX = CatSlice(start=9, stop=12)
 ERR_GYRO_BIAS_IDX = CatSlice(start=12, stop=15)
 
-ATT_IDX_THETA = CatSlice(start=6, stop=9)
-ACC_BIAS_IDX_THETA = CatSlice(start=9, stop=12)
-GYRO_BIAS_IDX_THETA = CatSlice(start=12, stop=15)
+
 
 
 # %% The class
@@ -152,7 +150,7 @@ class ESKF:
         ), f"ESKF.predict_nominal: x_nominal_predicted shape incorrect {x_nominal_predicted.shape}"
         return x_nominal_predicted
 
-    def Aerr(
+    def Aerr( # sverre: error state transition matrix
         self, x_nominal: np.ndarray, acceleration: np.ndarray, omega: np.ndarray,
     ) -> np.ndarray:
         """Calculate the continuous time error state dynamics Jacobian.
@@ -185,12 +183,12 @@ class ESKF:
 
         # Set submatrices
         A[POS_IDX * VEL_IDX] = np.eye(3)
-        A[VEL_IDX * ERR_ATT_IDX] = -R*cross_product_matrix(R @ acceleration) #er acceleration = (a_m - a_b)?
+        A[VEL_IDX * ERR_ATT_IDX] = -R @ cross_product_matrix(acceleration)
         A[VEL_IDX * ERR_ACC_BIAS_IDX] = -R 
-        A[ERR_ATT_IDX * ERR_ATT_IDX] = -cross_product_matrix(R @ omega) #det samme spm gjelder her
+        A[ERR_ATT_IDX * ERR_ATT_IDX] = -cross_product_matrix(omega) #tror vi holder oss til omega i BODY her (på samme måte som for quaternion_prediction over)
         A[ERR_ATT_IDX * ERR_GYRO_BIAS_IDX] = -np.eye(3)
-        A[ERR_ACC_BIAS_IDX * ERR_ACC_BIAS_IDX] = -self.p_acc*np.eye(3) #p_acc er en proporsjonalitetskonstant (tuning-parameter) som bestermmer raten til biaset
-        A[ERR_GYRO_BIAS_IDX * ERR_GYRO_BIAS_IDX] = -self.p_gyro*np.eye(3) #det samme gjelder her
+        A[ERR_ACC_BIAS_IDX * ERR_ACC_BIAS_IDX] = -self.p_acc * np.eye(3) #p_acc er en proporsjonalitetskonstant (tuning-parameter) som bestermmer raten til biaset
+        A[ERR_GYRO_BIAS_IDX * ERR_GYRO_BIAS_IDX] = -self.p_gyro * np.eye(3) #det samme gjelder her
 
         # Bias correction
         A[VEL_IDX * ERR_ACC_BIAS_IDX] = A[VEL_IDX * ERR_ACC_BIAS_IDX] @ self.S_a
@@ -273,7 +271,7 @@ class ESKF:
 
         V = np.zeros((30, 30))
         V[FIRST_HALF_INDEX * FIRST_HALF_INDEX] = -A
-        V[SECOND_HALF_INDEX * FIRST_HALF_INDEX] = G @ self.Q_err @ G.T # Riktig Q??
+        V[FIRST_HALF_INDEX * SECOND_HALF_INDEX] = G @ self.Q_err @ G.T # sverre: tror det er riktig Q_err, ja. Se ligning 10.69
         V[SECOND_HALF_INDEX * SECOND_HALF_INDEX] = A
         
         assert V.shape == (
@@ -337,8 +335,7 @@ class ESKF:
 
         Ad, GQGd = self.discrete_error_matrices(x_nominal, acceleration, omega, Ts)
 
-        F = la.expm(Ts*Ad)                                                              #usikker på om dette er riktig.
-        P_predicted = F @ P @ F.T + Ad.T @ GQGd
+        P_predicted = Ad.T @ P @ Ad + Ad.T @ GQGd # sverre: tror dette er riktig transponering, siden Ad = A.T i følge Van Loans
 
         assert P_predicted.shape == (
             15,
@@ -454,6 +451,7 @@ class ESKF:
         # Covariance
         G_injected = np.eye(15) #sverre: 10.86  # TODO: Compensate for injection in the covariances
         G_injected[ERR_ATT_IDX * ERR_ATT_IDX] = np.eye(3) - cross_product_matrix(0.5*d_theta)   
+
         P_injected = G_injected @ P @ G_injected.T  # TODO: Compensate for injection in the covariances
 
         assert x_injected.shape == (
@@ -516,10 +514,9 @@ class ESKF:
         X[7,6:9] = 0.5*np.array([q[0], -q[3], q[2]])
         X[8,6:9] = 0.5*np.array([q[3], q[0], -q[1]])
         X[9,6:9] = 0.5*np.array([-q[2], q[1], q[0]])
-        H = Hx @ X #sverre: 10.76           Blir dette riktige dimensjoner?
+        H = Hx @ X #sverre: 10.76
 
-        #v = x_nominal[POS_IDX] - H.T @ z_GNSS_position  # TODO: innovation
-        v = z_GNSS_position - H @ x_nominal[:-1] ##################trenger ikke det siste elementet uansett. Må være shape = (15,) for å passe med H ######
+        v = z_GNSS_position - Hx @ x_nominal  # sverre: bruker Hx her siden den er (3,16) TODO: innovation
 
         # leverarm compensation
         if not np.allclose(lever_arm, 0):
@@ -603,7 +600,7 @@ class ESKF:
         Jo = I - W @ H  # for Joseph form
 
         # TODO: P update
-        P_update = (np.eye(15) - W @ H) @ P @ (np.eye(15) - W @ H).T + W @ R @ W.T #sverre: 4.10 (numerically faster)
+        P_update = Jo @ P @ Jo.T + W @ R @ W.T #sverre: 4.10 (numerically faster) (jospeh form)
 
         # error state injection
         x_injected, P_injected = self.inject(x_nominal, delta_x, P_update)
@@ -695,7 +692,6 @@ class ESKF:
 
         quaternion_conj = x_nominal[ATT_IDX]
         quaternion_conj[1:4] = -1 * quaternion_conj[1:4]  # TODO: Conjugate of quaternion
-
         delta_quaternion = quaternion_product(quaternion_conj, x_true[ATT_IDX])  # TODO: Error quaternion
         delta_theta = 2*delta_quaternion[1:4] #sverre: brukte hinte i oppgaven Im(delta_q) ~ 0.5*delta_theta
 
@@ -734,6 +730,11 @@ class ESKF:
         assert x_true.shape == (
             16,
         ), f"ESKF.NEES: x_true shape incorrect {x_true.shape}"
+
+
+        ATT_IDX_THETA = CatSlice(start=6, stop=9)
+        ACC_BIAS_IDX_THETA = CatSlice(start=9, stop=12)
+        GYRO_BIAS_IDX_THETA = CatSlice(start=12, stop=15)
 
         d_x = cls.delta_x(x_nominal, x_true)
 
