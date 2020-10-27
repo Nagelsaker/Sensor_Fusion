@@ -336,7 +336,7 @@ class ESKF:
         Ad, GQGd = self.discrete_error_matrices(x_nominal, acceleration, omega, Ts)
 
         # P_predicted = Ad.T @ P @ Ad + Ad.T @ GQGd # sverre: tror dette er riktig transponering, siden Ad = A.T i følge Van Loans
-        P_predicted = Ad @ P @ Ad.T + Ad @ GQGd # sverre: tror dette er riktig transponering, siden Ad = A.T i følge Van Loans
+        P_predicted = Ad @ P @ Ad.T + Ad @ GQGd 
 
         assert P_predicted.shape == (
             15,
@@ -520,6 +520,7 @@ class ESKF:
         H = Hx @ X #sverre: 10.76
 
         v = z_GNSS_position - Hx @ x_nominal  # sverre: bruker Hx her siden den er (3,16) TODO: innovation
+
 
         # H = np.block([np.eye(3), np.zeros((3,12))]) # Simon: Hvorfor denne H-en?
         # v = z_GNSS_position - x_nominal[POS_IDX]    # Simon: Hvorfor denne v-en?
