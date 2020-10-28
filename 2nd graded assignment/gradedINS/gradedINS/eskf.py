@@ -125,6 +125,7 @@ class ESKF:
         kappa = Ts * omega # sverre: står i hintet at denne skal oppgis i BODY
         kappa_norm = np.linalg.norm(kappa) # sverre: dette skal være en 2-norm #############er dette riktig norm?##########
         qr = np.zeros(4)
+        # qr[0] = np.cos(0.5*kappa_norm)
         qr[0] = np.cos(0.5*kappa_norm)
         qr[1:4] = np.sin(0.5*kappa_norm)*(kappa.T/kappa_norm)
         quaternion_prediction = quaternion_product(quaternion, qr.T) # sverre: skal denne uttrykkes i body eller world? Er forskjellige definisjoner av q_dot i boka og i hintet til oppgaven.
@@ -226,6 +227,7 @@ class ESKF:
         G[ERR_ATT_IDX * VEL_IDX] = -np.eye(3)
         G[ERR_ACC_BIAS_IDX * ERR_ATT_IDX] = np.eye(3)
         G[ERR_GYRO_BIAS_IDX * ERR_ACC_BIAS_IDX] = np.eye(3)
+
         assert G.shape == (15, 12), f"ESKF.Gerr: G-matrix shape incorrect {G.shape}"
         return G
 
@@ -273,6 +275,8 @@ class ESKF:
         V[FIRST_HALF_INDEX * FIRST_HALF_INDEX] = -A
         V[FIRST_HALF_INDEX * SECOND_HALF_INDEX] = G @ self.Q_err @ G.T # sverre: 10.69
         V[SECOND_HALF_INDEX * SECOND_HALF_INDEX] = A.T
+
+        # V2 = np.block([[-A, G@self.Q_err@G.T], [np.zeros_like(A), A.T]]) #* Ts
         
         assert V.shape == (
             30,
@@ -282,6 +286,10 @@ class ESKF:
 
         Ad = VanLoanMatrix[SECOND_HALF_INDEX * SECOND_HALF_INDEX].T
         GQGd = VanLoanMatrix[FIRST_HALF_INDEX * SECOND_HALF_INDEX]
+
+
+        # Ad = VanLoanMatrix[CatSlice(15,30)**2].T
+        # GQGd = Ad @ VanLoanMatrix[CatSlice(0,15)*CatSlice(15,30)]
 
 
         assert Ad.shape == (
@@ -521,9 +529,8 @@ class ESKF:
 
         v = z_GNSS_position - Hx @ x_nominal  # sverre: bruker Hx her siden den er (3,16) TODO: innovation
 
-
-        # H = np.block([np.eye(3), np.zeros((3,12))]) # Simon: Hvorfor denne H-en?
-        # v = z_GNSS_position - x_nominal[POS_IDX]    # Simon: Hvorfor denne v-en?
+        # H_2 = np.block([np.eye(3), np.zeros((3,12))]) # Simon: Hvorfor denne H-en?
+        # v_2 = z_GNSS_position - x_nominal[POS_IDX]    # Simon: Hvorfor denne v-en?
 
         # leverarm compensation
         if not np.allclose(lever_arm, 0):
@@ -616,6 +623,8 @@ class ESKF:
 
         # error state injection
         x_injected, P_injected = self.inject(x_nominal, delta_x, P_update)
+
+        
 
         assert x_injected.shape == (
             16,
@@ -756,6 +765,9 @@ class ESKF:
         NEES_att = d_x[ATT_IDX_THETA].T @ np.linalg.inv(P[ATT_IDX_THETA * ATT_IDX_THETA]) @ d_x[ATT_IDX_THETA]  # TODO: NEES attitude sverre: det skal vel være theta og ikke q NEES baserer seg på?
         NEES_accbias = d_x[ACC_BIAS_IDX_THETA].T @ np.linalg.inv(P[ACC_BIAS_IDX_THETA * ACC_BIAS_IDX_THETA]) @ d_x[ACC_BIAS_IDX_THETA]  # TODO: NEES accelerometer bias
         NEES_gyrobias = d_x[GYRO_BIAS_IDX_THETA].T @ np.linalg.inv(P[GYRO_BIAS_IDX_THETA * GYRO_BIAS_IDX_THETA]) @ d_x[GYRO_BIAS_IDX_THETA]  # TODO: NEES gyroscope bias
+        # NEES_att = d_x[ERR_ATT_IDX].T @ np.linalg.inv(P[ERR_ATT_IDX * ERR_ATT_IDX]) @ d_x[ERR_ATT_IDX]  # TODO: NEES attitude sverre: det skal vel være theta og ikke q NEES baserer seg på?
+        # NEES_accbias = d_x[ERR_ATT_IDX].T @ np.linalg.inv(P[ERR_ATT_IDX * ERR_ATT_IDX]) @ d_x[ERR_ATT_IDX]  # TODO: NEES accelerometer bias
+        # NEES_gyrobias = d_x[ERR_GYRO_BIAS_IDX].T @ np.linalg.inv(P[ERR_GYRO_BIAS_IDX * ERR_GYRO_BIAS_IDX]) @ d_x[ERR_GYRO_BIAS_IDX]  # TODO: NEES gyroscope bias
 
         NEESes = np.array(
             [NEES_all, NEES_pos, NEES_vel, NEES_att, NEES_accbias, NEES_gyrobias]
