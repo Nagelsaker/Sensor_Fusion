@@ -120,17 +120,21 @@ cont_gyro_noise_std = 4.36e-5 #4.36e-5  # (rad/s)/sqrt(Hz)
 cont_acc_noise_std = 1.167e-3  # (m/s**2)/sqrt(Hz)
 
 # Discrete sample noise at simulation rate used
-rate_std = 0.5 * cont_gyro_noise_std * np.sqrt(1 / dt)                                  ### skal tunes ###
-acc_std = 0.5 * cont_acc_noise_std * np.sqrt(1 / dt)                                    ### skal tunes ###
+# rate_std = 0.5 * cont_gyro_noise_std * np.sqrt(1 / dt)                                  ### skal tunes ###
+# acc_std = 0.5 * cont_acc_noise_std * np.sqrt(1 / dt)                                    ### skal tunes ###
+rate_std = 1 * cont_gyro_noise_std * np.sqrt(1 / dt)                                  ### skal tunes ###
+acc_std = 1.2 * cont_acc_noise_std * np.sqrt(1 / dt)                                    ### skal tunes ###
 
 # Bias values
-rate_bias_driving_noise_std = 8e-4
+# rate_bias_driving_noise_std = 5e-5
+rate_bias_driving_noise_std = 1e-4
 cont_rate_bias_driving_noise_std = (                                                    ### skal tunes ###
     (1 / 3) * rate_bias_driving_noise_std / np.sqrt(1 / dt)
 )
 
 # acc_bias_driving_noise_std = 4e-3
-acc_bias_driving_noise_std = 8e-3
+# acc_bias_driving_noise_std = 4e-3
+acc_bias_driving_noise_std = 5e-3
 cont_acc_bias_driving_noise_std = 6 * acc_bias_driving_noise_std / np.sqrt(1 / dt)      ### skal tunes ###
 ##########################################################################################
 
@@ -143,6 +147,7 @@ R_GNSS = np.diag(p_std ** 2)
 p_acc = 1e-16                                                                           ### skal tunes ###
 
 p_gyro = 1e-16                                                                         ### skal tunes ###
+
 
 # %% Estimator
 eskf = ESKF(
@@ -194,7 +199,7 @@ dummy = eskf.update_GNSS_position(x_pred[0], P_pred[0], z_GNSS[0], R_GNSS, lever
 # %% Run estimation
 # run this file with 'python -O run_INS_simulated.py' to turn of assertions and get about 8/5 speed increase for longer runs
 
-N: int = steps # TODO: choose a small value to begin with (500?), and gradually increase as you OK results
+N: int = steps #10000 #20000 #steps # TODO: choose a small value to begin with (500?), and gradually increase as you OK results
 #sverre: husk at z_gnss bare inneholder 900 elementer, som er mindre enn de andre datalistene. 
 doGNSS: bool = True  # TODO: Set this to False if you want to check that the predictions make sense over reasonable time lenghts
 
@@ -270,7 +275,7 @@ axs2[3].legend(["$x$", "$y$", "$z$"])
 
 axs2[4].plot(t, x_est[:N, GYRO_BIAS_IDX] * 180 / np.pi * 3600)
 axs2[4].set(ylabel="Gyro bias [deg/h]")
-axs2[4].legend(["$x$", "$y$", "$z$"])
+# axs2[4].legend(["$x$", "$y$", "$z$"])
 
 
 fig2.suptitle("States estimates")
@@ -325,13 +330,13 @@ axs3[3].legend(
 
 axs3[4].plot(t, delta_x[:N, ERR_GYRO_BIAS_IDX] * 180 / np.pi)
 axs3[4].set(ylabel="Gyro bias error [deg/s]")
-axs3[4].legend(
-    [
-        f"$x$ ({np.sqrt(np.mean((delta_x[:N, 12]* 180 / np.pi)**2))})",
-        f"$y$ ({np.sqrt(np.mean((delta_x[:N, 13]* 180 / np.pi)**2))})",
-        f"$z$ ({np.sqrt(np.mean((delta_x[:N, 14]* 180 / np.pi)**2))})",
-    ]
-)
+# axs3[4].legend(
+#     [
+#         f"$x$ ({np.sqrt(np.mean((delta_x[:N, 12]* 180 / np.pi)**2))})",
+#         f"$y$ ({np.sqrt(np.mean((delta_x[:N, 13]* 180 / np.pi)**2))})",
+#         f"$z$ ({np.sqrt(np.mean((delta_x[:N, 14]* 180 / np.pi)**2))})",
+#     ]
+# )
 
 fig3.suptitle("States estimate errors")
 

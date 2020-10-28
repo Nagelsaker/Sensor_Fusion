@@ -344,7 +344,7 @@ class ESKF:
         Ad, GQGd = self.discrete_error_matrices(x_nominal, acceleration, omega, Ts)
 
         # P_predicted = Ad.T @ P @ Ad + Ad.T @ GQGd # sverre: tror dette er riktig transponering, siden Ad = A.T i følge Van Loans
-        P_predicted = Ad @ P @ Ad.T + Ad @ GQGd # sverre: tror dette er riktig transponering, siden Ad = A.T i følge Van Loans
+        P_predicted = Ad @ P @ Ad.T + Ad @ GQGd 
 
         assert P_predicted.shape == (
             15,
@@ -623,6 +623,8 @@ class ESKF:
 
         # error state injection
         x_injected, P_injected = self.inject(x_nominal, delta_x, P_update)
+
+        
 
         assert x_injected.shape == (
             16,
