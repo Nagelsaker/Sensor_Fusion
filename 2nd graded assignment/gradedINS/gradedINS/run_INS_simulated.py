@@ -159,8 +159,8 @@ eskf = ESKF(
     cont_rate_bias_driving_noise_std,
     p_acc,
     p_gyro,
-    S_a=S_a, # set the accelerometer correction matrix
-    S_g=S_g, # set the gyro correction matrix,
+    # S_a=S_a, # set the accelerometer correction matrix
+    # S_g=S_g, # set the gyro correction matrix,
     debug=True # TODO: False to avoid expensive debug checks, can also be suppressed by calling 'python -O run_INS_simulated.py'
 )
 
@@ -186,6 +186,7 @@ NEES_gyrobias = np.zeros(steps)
 x_pred[0, POS_IDX] = np.array([0, 0, -5])  # starting 5 metres above ground
 x_pred[0, VEL_IDX] = np.array([20, 0, 0])  # starting at 20 m/s due north
 x_pred[0, 6] = 1  # no initial rotation: nose to North, right to East, and belly down
+# x_pred[0, -1] = 0.0244
 
 # These have to be set reasonably to get good results
 #sverre: hvor sikker der du på at du er i nærheten av den initielle tilstanden? Bare sørg for at den kommer i gang 
@@ -260,27 +261,27 @@ fig2, axs2 = plt.subplots(5, 1, num=2, clear=True)
 
 axs2[0].plot(t, x_est[:N, POS_IDX])
 axs2[0].set(ylabel="NED position [m]")
-axs2[0].legend(["North", "East", "Down"])
+# axs2[0].legend(["North", "East", "Down"])
 
 
 axs2[1].plot(t, x_est[:N, VEL_IDX])
 axs2[1].set(ylabel="Velocities [m/s]")
-axs2[1].legend(["North", "East", "Down"])
+# axs2[1].legend(["North", "East", "Down"])
 
 
 axs2[2].plot(t, eul[:N] * 180 / np.pi)
 axs2[2].set(ylabel="Euler angles [deg]")
-axs2[2].legend([r"$\phi$", r"$\theta$", r"$\psi$"])
+# axs2[2].legend([r"$\phi$", r"$\theta$", r"$\psi$"])
 
 
 axs2[3].plot(t, x_est[:N, ACC_BIAS_IDX])
 axs2[3].set(ylabel="Accl bias [m/s^2]")
-axs2[3].legend(["$x$", "$y$", "$z$"])
+# axs2[3].legend(["$x$", "$y$", "$z$"])
 
 
 axs2[4].plot(t, x_est[:N, GYRO_BIAS_IDX] * 180/np.pi * 3600)
 axs2[4].set(ylabel="Gyro bias [deg/h]")
-axs2[4].legend(["$x$", "$y$", "$z$"])
+# axs2[4].legend(["$x$", "$y$", "$z$"])
 
 
 fig2.suptitle("States estimates")
@@ -290,58 +291,58 @@ fig3, axs3 = plt.subplots(5, 1, num=3, clear=True)
 delta_x_RMSE = np.sqrt(np.mean(delta_x[:N] ** 2, axis=0))  # TODO use this in legends
 axs3[0].plot(t, delta_x[:N, POS_IDX])
 axs3[0].set(ylabel="NED position error [m]")
-axs3[0].legend(
-    [
-        f"North ({np.sqrt(np.mean(delta_x[:N, 0]**2))})",
-        f"East ({np.sqrt(np.mean(delta_x[:N, 1]**2))})",
-        f"Down ({np.sqrt(np.mean(delta_x[:N, 2]**2))})",
-    ]
-)
+# axs3[0].legend(
+#     [
+#         f"North ({np.sqrt(np.mean(delta_x[:N, 0]**2))})",
+#         f"East ({np.sqrt(np.mean(delta_x[:N, 1]**2))})",
+#         f"Down ({np.sqrt(np.mean(delta_x[:N, 2]**2))})",
+#     ]
+# )
 
 axs3[1].plot(t, delta_x[:N, VEL_IDX])
 axs3[1].set(ylabel="Velocities error [m]")
-axs3[1].legend(
-    [
-        f"North ({np.sqrt(np.mean(delta_x[:N, 3]**2))})",
-        f"East ({np.sqrt(np.mean(delta_x[:N, 4]**2))})",
-        f"Down ({np.sqrt(np.mean(delta_x[:N, 5]**2))})",
-    ]
-)
+# axs3[1].legend(
+#     [
+#         f"North ({np.sqrt(np.mean(delta_x[:N, 3]**2))})",
+#         f"East ({np.sqrt(np.mean(delta_x[:N, 4]**2))})",
+#         f"Down ({np.sqrt(np.mean(delta_x[:N, 5]**2))})",
+#     ]
+# )
 
 # quick wrap func
 wrap_to_pi = lambda rads: (rads + np.pi) % (2 * np.pi) - np.pi
 eul_error = wrap_to_pi(eul[:N] - eul_true[:N]) #* 180 / np.pi
 axs3[2].plot(t, eul_error)
 axs3[2].set(ylabel="Euler angles error [deg]")
-axs3[2].legend(
-    [
-        rf"$\phi$ ({np.sqrt(np.mean((eul_error[:N, 0] * 180 / np.pi)**2))})",
-        rf"$\theta$ ({np.sqrt(np.mean((eul_error[:N, 1] * 180 / np.pi)**2))})",
-        rf"$\psi$ ({np.sqrt(np.mean((eul_error[:N, 2] * 180 / np.pi)**2))})",
-    ]
-)
+# axs3[2].legend(
+#     [
+#         rf"$\phi$ ({np.sqrt(np.mean((eul_error[:N, 0] * 180 / np.pi)**2))})",
+#         rf"$\theta$ ({np.sqrt(np.mean((eul_error[:N, 1] * 180 / np.pi)**2))})",
+#         rf"$\psi$ ({np.sqrt(np.mean((eul_error[:N, 2] * 180 / np.pi)**2))})",
+#     ]
+# )
 
 
 # Error, should be 9, 10 and 11 instead of index 12, 13, 14
 axs3[3].plot(t, delta_x[:N, ERR_ACC_BIAS_IDX])
 axs3[3].set(ylabel="Accl bias error [m/s^2]")
-axs3[3].legend(
-    [
-        f"$x$ ({np.sqrt(np.mean(delta_x[:N, 9]**2))})",
-        f"$y$ ({np.sqrt(np.mean(delta_x[:N, 10]**2))})",
-        f"$z$ ({np.sqrt(np.mean(delta_x[:N, 11]**2))})",
-    ]
-)
+# axs3[3].legend(
+#     [
+#         f"$x$ ({np.sqrt(np.mean(delta_x[:N, 9]**2))})",
+#         f"$y$ ({np.sqrt(np.mean(delta_x[:N, 10]**2))})",
+#         f"$z$ ({np.sqrt(np.mean(delta_x[:N, 11]**2))})",
+#     ]
+# )
 
 axs3[4].plot(t, delta_x[:N, ERR_GYRO_BIAS_IDX] * 180 / np.pi)
 axs3[4].set(ylabel="Gyro bias error [deg/s]")
-axs3[4].legend(
-    [
-        f"$x$ ({np.sqrt(np.mean((delta_x[:N, 12]* 180 / np.pi)**2))})",
-        f"$y$ ({np.sqrt(np.mean((delta_x[:N, 13]* 180 / np.pi)**2))})",
-        f"$z$ ({np.sqrt(np.mean((delta_x[:N, 14]* 180 / np.pi)**2))})",
-    ]
-)
+# axs3[4].legend(
+#     [
+#         f"$x$ ({np.sqrt(np.mean((delta_x[:N, 12]* 180 / np.pi)**2))})",
+#         f"$y$ ({np.sqrt(np.mean((delta_x[:N, 13]* 180 / np.pi)**2))})",
+#         f"$z$ ({np.sqrt(np.mean((delta_x[:N, 14]* 180 / np.pi)**2))})",
+#     ]
+# )
 
 fig3.suptitle("States estimate errors")
 
