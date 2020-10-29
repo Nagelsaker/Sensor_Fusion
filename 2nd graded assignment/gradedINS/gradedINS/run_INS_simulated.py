@@ -151,11 +151,11 @@ p_gyro = 1e-16                                                                  
 
 # %% Estimator
 eskf = ESKF(
-    acc_std,
+    acc_std, # Simon: Discrete noise
     rate_std,
-    cont_acc_bias_driving_noise_std,
+    cont_acc_bias_driving_noise_std, # Continous noise
     cont_rate_bias_driving_noise_std,
-    p_acc,
+    p_acc, 
     p_gyro,
     S_a=S_a, # set the accelerometer correction matrix
     S_g=S_g, # set the gyro correction matrix,
