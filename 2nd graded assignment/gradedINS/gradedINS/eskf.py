@@ -714,6 +714,10 @@ class ESKF:
         quaternion_conj = x_nominal[ATT_IDX]
         quaternion_conj[1:4] = -1 * quaternion_conj[1:4]  # TODO: Conjugate of quaternion
         delta_quaternion = quaternion_product(quaternion_conj, x_true[ATT_IDX])  # TODO: Error quaternion
+
+        # if delta_quaternion[0] < 0:
+        #     delta_quaternion = -delta_quaternion
+
         delta_theta = 2*delta_quaternion[1:4] #sverre: brukte hinte i oppgaven Im(delta_q) ~ 0.5*delta_theta
 
         # Concatenation of bias indices
