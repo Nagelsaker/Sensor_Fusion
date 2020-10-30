@@ -186,7 +186,7 @@ NEES_gyrobias = np.zeros(steps)
 x_pred[0, POS_IDX] = np.array([0, 0, -5])  # starting 5 metres above ground
 x_pred[0, VEL_IDX] = np.array([20, 0, 0])  # starting at 20 m/s due north
 x_pred[0, 6] = 1  # no initial rotation: nose to North, right to East, and belly down
-# x_pred[0, -1] = 0.0244
+x_pred[0, -1] = 0.000321
 
 # These have to be set reasonably to get good results
 #sverre: hvor sikker der du på at du er i nærheten av den initielle tilstanden? Bare sørg for at den kommer i gang 

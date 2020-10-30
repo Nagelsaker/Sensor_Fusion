@@ -120,16 +120,24 @@ cont_acc_noise_std = 1.167e-3  # TODO (m/s**2)/sqrt(Hz)
 # Discrete sample noise at simulation rate used
 # rate_std = cont_gyro_noise_std*np.sqrt(1/dt)
 # acc_std  = cont_acc_noise_std*np.sqrt(1/dt)
-rate_std = 1 * cont_gyro_noise_std * np.sqrt(1 / dt)                                      
-acc_std = 1.2 * cont_acc_noise_std * np.sqrt(1 / dt) 
+# rate_std = 1 * cont_gyro_noise_std * np.sqrt(1 / dt)                                      
+# acc_std = 1.2 * cont_acc_noise_std * np.sqrt(1 / dt)
+rate_std = cont_gyro_noise_std * np.sqrt(1/dt)
+acc_std = cont_acc_noise_std * np.sqrt(1/dt) 
 
 
 # Bias values
-rate_bias_driving_noise_std = 1e-4 # TODO
-cont_rate_bias_driving_noise_std = rate_bias_driving_noise_std/np.sqrt(1/dt)
+# rate_bias_driving_noise_std = 1e-4 # TODO
+# cont_rate_bias_driving_noise_std = rate_bias_driving_noise_std/np.sqrt(1/dt)
+rate_bias_driving_noise_std = 5e-5# TODO
+cont_rate_bias_factor = 0.5
+cont_rate_bias_driving_noise_std = cont_rate_bias_factor * rate_bias_driving_noise_std/np.sqrt(1/dt)
 
-acc_bias_driving_noise_std = 5e-3 # TODO
-cont_acc_bias_driving_noise_std = acc_bias_driving_noise_std/np.sqrt(1/dt)
+# acc_bias_driving_noise_std = 5e-3 # TODO
+# cont_acc_bias_driving_noise_std = acc_bias_driving_noise_std/np.sqrt(1/dt)
+acc_bias_driving_noise_std = 4e-3# TODO
+cont_acc_bias_factor = 3
+cont_acc_bias_driving_noise_std = cont_acc_bias_factor * acc_bias_driving_noise_std/np.sqrt(1/dt)
 #########################################################################################################
 # Position and velocity measurement
 
@@ -173,15 +181,21 @@ x_pred[0, ATT_IDX] = np.array([
     np.sin(45 * np.pi / 180)
 ])  # nose to east, right to south and belly down.
 
-P_pred[0][POS_IDX**2] = 10**2 * np.eye(3)
-P_pred[0][VEL_IDX**2] = 3**2 * np.eye(3)
-P_pred[0][ERR_ATT_IDX**2] = (np.pi/30)**2 * np.eye(3) # error rotation vector (not quat)
-P_pred[0][ERR_ACC_BIAS_IDX**2] = 0.05**2 * np.eye(3)
-P_pred[0][ERR_GYRO_BIAS_IDX**2] = (1e-3)**2 * np.eye(3)
+# P_pred[0][POS_IDX**2] = 10**2 * np.eye(3)
+# P_pred[0][VEL_IDX**2] = 3**2 * np.eye(3)
+# P_pred[0][ERR_ATT_IDX**2] = (np.pi/30)**2 * np.eye(3) # error rotation vector (not quat)
+# P_pred[0][ERR_ACC_BIAS_IDX**2] = 0.05**2 * np.eye(3)
+# P_pred[0][ERR_GYRO_BIAS_IDX**2] = (1e-3)**2 * np.eye(3)
+
+P_pred[0][POS_IDX ** 2] = 7.5**2*np.eye(3)# TODO
+P_pred[0][VEL_IDX ** 2] = 7.5**2*np.eye(3)# TODO
+P_pred[0][ERR_ATT_IDX**2] = np.diag([np.pi/30, np.pi/30, np.pi/3])**2
+P_pred[0][ERR_ACC_BIAS_IDX ** 2] = 0.05**2*np.eye(3)# TODO
+P_pred[0][ERR_GYRO_BIAS_IDX ** 2] = 0.005**2*np.eye(3)# TODO
 
 # %% Run estimation
 
-N = steps
+N = 10000
 GNSSk = 0
 
 for k in tqdm(range(N)):
@@ -200,7 +214,7 @@ for k in tqdm(range(N)):
         P_est[k] = P_pred[k] # TODO
 
     if k < N - 1:
-        x_pred[k + 1], P_pred[k + 1] = eskf.predict(x_est[k], P_est[k], z_acceleration[k+1], z_gyroscope[k+1], dt]) # TODO
+        x_pred[k + 1], P_pred[k + 1] = eskf.predict(x_est[k], P_est[k], z_acceleration[k+1], z_gyroscope[k+1], dt) # TODO
 
     if eskf.debug:
         assert np.all(np.isfinite(P_pred[k])), f"Not finite P_pred at index {k + 1}"
@@ -211,8 +225,10 @@ for k in tqdm(range(N)):
 fig1 = plt.figure(1)
 ax = plt.axes(projection='3d')
 
-ax.plot3D(x_est[0:N, 1], x_est[0:N, 0], -x_est[0:N, 2])
-ax.plot3D(z_GNSS[0:N, 1], z_GNSS[0:N, 0], -z_GNSS[0:GNSSk, 2]) # ax.plot3D(z_GNSS[0:N, 1], z_GNSS[0:N, 0], -z_GNSS[0:N, 2])
+# ax.plot3D(x_est[0:N, 1], x_est[0:N, 0], -x_est[0:N, 2])
+# ax.plot3D(z_GNSS[0:GNSSk, 1], z_GNSS[0:GNSSk, 0], -z_GNSS[0:GNSSk, 2]) # ax.plot3D(z_GNSS[0:N, 1], z_GNSS[0:N, 0], -z_GNSS[0:N, 2])
+ax.plot3D(x_est[:N, 1], x_est[:N, 0], -x_est[:N, 2])
+ax.plot3D(z_GNSS[:GNSSk, 1], z_GNSS[:GNSSk, 0], -z_GNSS[:GNSSk, 2])
 ax.set_xlabel('East [m]')
 ax.set_xlabel('North [m]')
 ax.set_xlabel('Altitude [m]')
@@ -265,11 +281,13 @@ plt.title(f'NIS ({100 *  insideCI:.1f} inside {100 * confprob} confidence interv
 plt.grid()
 
 # %% box plots
-fig4 = plt.figure()
-
-gauss_compare = np.sum(np.random.randn(3, GNSSk)**2, axis=0)
-plt.boxplot([NIS[0:GNSSk], gauss_compare], notch=True)
-plt.legend('NIS', 'gauss')
-plt.grid()
+# 
+# fig4 = plt.figure()
+# 
+# gauss_compare = np.sum(np.random.randn(3, GNSSk)**2, axis=0)
+# plt.boxplot([NIS[0:GNSSk], gauss_compare], notch=True)
+# plt.legend('NIS', 'gauss')
+# plt.grid()
 
 # %%
+plt.show()
