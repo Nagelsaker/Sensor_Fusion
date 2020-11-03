@@ -139,9 +139,9 @@ class EKFSLAM:
         # cov matrix layout:
         # [[P_xx, P_xm],
         # [P_mx, P_mm]]
-        P[:3, :3] = Fx @ P[:3, :3] @ Fx.T  + self.Q[:3, .3] # TODO robot cov prediction
-        P[:3, 3:] =  # TODO robot-map covariance prediction
-        P[3:, :3] =  # TODO map-robot covariance: transpose of the above
+        P[:3, :3] = Fx @ P[:3, :3] @ Fx.T  + Fu @ self.Q[:3, :3] @ Fu.T # TODO robot cov prediction
+        P[:3, 3:] = Fx @ P[:3, 3:] # TODO robot-map covariance prediction
+        P[3:, :3] = P[:3, 3:].T # TODO map-robot covariance: transpose of the above
 
         assert np.allclose(P, P.T), "EKFSLAM.predict: not symmetric P"
         assert np.all(
@@ -171,19 +171,24 @@ class EKFSLAM:
         m = eta[3:].reshape((-1, 2)).T
 
         Rot = rotmat2d(-x[2])
+        Rot_pos = rotmat2d(-x[2])
 
         # None as index ads an axis with size 1 at that position.
         # Numpy broadcasts size 1 dimensions to any size when needed
-        delta_m = np.array([np.linalg.norm(measurement - x[:2]) for measurement in m]) # TODO, relative position of landmark to sensor on robot in world frame
+        delta_m = list(map(lambda l: l - x[:2] - Rot_pos @ self.sensor_offset, m)) # TODO, relative position of landmark to sensor on robot in world frame 
+        
+        # zpredcart = np.array([R @ d_m for d_m in delta_m]) # TODO, predicted measurements in cartesian coordinates, beware sensor offset for VP
+        zpredcart = list(map(lambda d_m: R @ d_m, delta_m))
 
-        zpredcart =  # TODO, predicted measurements in cartesian coordinates, beware sensor offset for VP
+        # zpred_r = np.array([np.linalg.norm(rel_pos) for rel_pos in zpredcart]) # TODO, ranges
+        zpred_r = list(map(lambda rel_pos, la.norm(rel_pos), zpredcart))
 
-        zpred_r = # TODO, ranges
-        zpred_theta = # TODO, bearings
-        zpred = # TODO, the two arrays above stacked on top of each other vertically like 
+        zpred_theta = list(map(lambda rel_pos: np.arctan2(rel_pos[0], rel_pos[1]), zpredcart)) # TODO, bearings
+
+        zpred = np.stacK(zpred_r, zpred_theta) # TODO, the two arrays above stacked on top of each other vertically like 
         # [ranges; 
         #  bearings]
-        # into shape (2, #lmrk)
+        # into shape (2, #lmrk) 
 
         zpred = zpred.T.ravel() # stack measurements along one dimension, [range1 bearing1 range2 bearing2 ...]
 
