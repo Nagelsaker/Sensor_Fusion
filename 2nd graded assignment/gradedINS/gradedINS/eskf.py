@@ -282,7 +282,8 @@ class ESKF:
             30,
             30,
         ), f"ESKF.discrete_error_matrices: Van Loan matrix shape incorrect {omega.shape}"
-        VanLoanMatrix = la.expm(V*Ts)  # This can be slow...
+        # VanLoanMatrix = la.expm(V*Ts)  # This can be slow...
+        VanLoanMatrix =  (np.eye(30) + V*Ts + V@V/2*Ts**2)
 
         Ad = VanLoanMatrix[SECOND_HALF_INDEX * SECOND_HALF_INDEX].T
         GQGd = VanLoanMatrix[FIRST_HALF_INDEX * SECOND_HALF_INDEX]

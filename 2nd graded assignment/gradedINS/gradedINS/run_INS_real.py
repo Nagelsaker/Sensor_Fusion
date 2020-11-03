@@ -92,7 +92,7 @@ except Exception as e:
 filename_to_load = "task_real.mat"
 loaded_data = scipy.io.loadmat(filename_to_load)
 
-do_corrections = True # TODO: set to false for the last task
+do_corrections = False # TODO: set to false for the last task
 if do_corrections:
     S_a = loaded_data['S_a']
     S_g = loaded_data['S_g']
@@ -120,30 +120,18 @@ cont_acc_noise_std = 1.167e-3  # TODO (m/s**2)/sqrt(Hz)
 # Discrete sample noise at simulation rate used
 # rate_std = cont_gyro_noise_std*np.sqrt(1/dt)
 # acc_std  = cont_acc_noise_std*np.sqrt(1/dt)
-# rate_std = 1 * cont_gyro_noise_std * np.sqrt(1 / dt)                                      
-# acc_std = 1.2 * cont_acc_noise_std * np.sqrt(1 / dt)
-rate_std = cont_gyro_noise_std * np.sqrt(1/dt)
-acc_std = cont_acc_noise_std * np.sqrt(1/dt) 
+rate_std = cont_gyro_noise_std * np.sqrt(1 / dt)                                      
+acc_std = cont_acc_noise_std * np.sqrt(1 / dt) 
 
 
 # Bias values
-# rate_bias_driving_noise_std = 1e-4 # TODO
-# cont_rate_bias_driving_noise_std = rate_bias_driving_noise_std/np.sqrt(1/dt)
-rate_bias_driving_noise_std = 5e-5# TODO
-cont_rate_bias_factor = 0.5
-cont_rate_bias_driving_noise_std = cont_rate_bias_factor * rate_bias_driving_noise_std/np.sqrt(1/dt)
+rate_bias_driving_noise_std = 2.42e-6 # TODO
+cont_rate_bias_driving_noise_std = rate_bias_driving_noise_std/np.sqrt(1/dt)
 
-# acc_bias_driving_noise_std = 5e-3 # TODO
-# cont_acc_bias_driving_noise_std = acc_bias_driving_noise_std/np.sqrt(1/dt)
-acc_bias_driving_noise_std = 4e-3# TODO
-cont_acc_bias_factor = 3
-cont_acc_bias_driving_noise_std = cont_acc_bias_factor * acc_bias_driving_noise_std/np.sqrt(1/dt)
+acc_bias_driving_noise_std = 5e-4 # TODO
+cont_acc_bias_driving_noise_std = acc_bias_driving_noise_std/np.sqrt(1/dt)
 #########################################################################################################
 # Position and velocity measurement
-
-p_std = np.diag([0.4, 0.4, 0.5])
-R_GNSS = np.diag(p_std ** 2)
-
 
 p_acc = 1e-16 # TODO
 
@@ -173,34 +161,35 @@ P_pred = np.zeros((steps, 15, 15))
 NIS = np.zeros(gnss_steps)
 
 # %% Initialise
-x_pred[0, POS_IDX] = np.array([0, 0, 0]) # starting 5 metres above ground
-x_pred[0, VEL_IDX] = np.array([0, 0, 0]) # starting at 20 m/s due north
+x_pred[0, POS_IDX] = np.array([0, 0, -5]) # starting 5 metres above ground
+x_pred[0, VEL_IDX] = np.array([20, 0, 0]) # starting at 20 m/s due north
 x_pred[0, ATT_IDX] = np.array([
     np.cos(45 * np.pi / 180),
     0, 0,
     np.sin(45 * np.pi / 180)
 ])  # nose to east, right to south and belly down.
 
-# P_pred[0][POS_IDX**2] = 10**2 * np.eye(3)
-# P_pred[0][VEL_IDX**2] = 3**2 * np.eye(3)
-# P_pred[0][ERR_ATT_IDX**2] = (np.pi/30)**2 * np.eye(3) # error rotation vector (not quat)
-# P_pred[0][ERR_ACC_BIAS_IDX**2] = 0.05**2 * np.eye(3)
-# P_pred[0][ERR_GYRO_BIAS_IDX**2] = (1e-3)**2 * np.eye(3)
 
-P_pred[0][POS_IDX ** 2] = 7.5**2*np.eye(3)# TODO
-P_pred[0][VEL_IDX ** 2] = 7.5**2*np.eye(3)# TODO
-P_pred[0][ERR_ATT_IDX**2] = np.diag([np.pi/30, np.pi/30, np.pi/3])**2
-P_pred[0][ERR_ACC_BIAS_IDX ** 2] = 0.05**2*np.eye(3)# TODO
-P_pred[0][ERR_GYRO_BIAS_IDX ** 2] = 0.005**2*np.eye(3)# TODO
+# From Datasheet:
+# Gyro var: 0.15°/√hr = 0.15 * (pi / 180) *(1/60) = 4.36e-5
+# Acc var: 0.06 m/s/√hr = 0.06 / 60 = 1e-3
+# Acc bias: 0.05 mg = 0.05 * 0.01 m/s/s = 5e-4
+# Gyro bias 0.5 °/h = 0.5 * (pi/180) * (1/3600) = 2.42e-6
+
+P_pred[0][POS_IDX**2] = 100 * np.eye(3) # 10**2 *
+P_pred[0][VEL_IDX**2] = 100 * np.eye(3) # 3**2 *
+P_pred[0][ERR_ATT_IDX**2] = 1e-2 * np.eye(3) # (np.pi/30)**2 * # error rotation vector (not quat)
+P_pred[0][ERR_ACC_BIAS_IDX**2] = 4e-3 * np.eye(3) # 0.05**2 * # 0.035
+P_pred[0][ERR_GYRO_BIAS_IDX**2] = 1e-3 # (1e-3)**2 *
 
 # %% Run estimation
 
-N = 10000
+N = steps
 GNSSk = 0
 
 for k in tqdm(range(N)):
     if timeIMU[k] >= timeGNSS[GNSSk]:
-        R_GNSS = (0.2*accuracy_GNSS[GNSSk])**2 * np.diag([0.5,0.5,3]) # TODO: Current GNSS covariance
+        R_GNSS = (accuracy_GNSS[GNSSk])**2 * np.eye(3) # TODO: Current GNSS covariance
         NIS[GNSSk] = eskf.NIS_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm) # TODO
 
         x_est[k], P_est[k] = eskf.update_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm) # TODO
@@ -214,7 +203,7 @@ for k in tqdm(range(N)):
         P_est[k] = P_pred[k] # TODO
 
     if k < N - 1:
-        x_pred[k + 1], P_pred[k + 1] = eskf.predict(x_est[k], P_est[k], z_acceleration[k+1], z_gyroscope[k+1], dt) # TODO
+        x_pred[k + 1], P_pred[k + 1] = eskf.predict(x_est[k], P_est[k], z_acceleration[k], z_gyroscope[k], dt) # TODO
 
     if eskf.debug:
         assert np.all(np.isfinite(P_pred[k])), f"Not finite P_pred at index {k + 1}"
@@ -222,16 +211,14 @@ for k in tqdm(range(N)):
 
 # %% Plots
 
-fig1 = plt.figure(1)
-ax = plt.axes(projection='3d')
+# fig1 = plt.figure(1)
+# ax = plt.axes(projection='3d')
 
 # ax.plot3D(x_est[0:N, 1], x_est[0:N, 0], -x_est[0:N, 2])
 # ax.plot3D(z_GNSS[0:GNSSk, 1], z_GNSS[0:GNSSk, 0], -z_GNSS[0:GNSSk, 2]) # ax.plot3D(z_GNSS[0:N, 1], z_GNSS[0:N, 0], -z_GNSS[0:N, 2])
-ax.plot3D(x_est[:N, 1], x_est[:N, 0], -x_est[:N, 2])
-ax.plot3D(z_GNSS[:GNSSk, 1], z_GNSS[:GNSSk, 0], -z_GNSS[:GNSSk, 2])
-ax.set_xlabel('East [m]')
-ax.set_xlabel('North [m]')
-ax.set_xlabel('Altitude [m]')
+# ax.set_xlabel('East [m]')
+# ax.set_xlabel('North [m]')
+# ax.set_xlabel('Altitude [m]')
 
 plt.grid()
 
@@ -243,27 +230,27 @@ fig2, axs2 = plt.subplots(5, 1)
 
 axs2[0].plot(t, x_est[0:N, POS_IDX])
 axs2[0].set(ylabel='NED position [m]')
-axs2[0].legend(['North', 'East', 'Down'])
+# axs2[0].legend(['North', 'East', 'Down'])
 plt.grid()
 
 axs2[1].plot(t, x_est[0:N, VEL_IDX])
 axs2[1].set(ylabel='Velocities [m/s]')
-axs2[1].legend(['North', 'East', 'Down'])
+# axs2[1].legend(['North', 'East', 'Down'])
 plt.grid()
 
 axs2[2].plot(t, eul[0:N] * 180 / np.pi)
 axs2[2].set(ylabel='Euler angles [deg]')
-axs2[2].legend(['\phi', '\theta', '\psi'])
+# axs2[2].legend(['\phi', '\theta', '\psi'])
 plt.grid()
 
 axs2[3].plot(t, x_est[0:N, ACC_BIAS_IDX])
 axs2[3].set(ylabel='Accl bias [m/s^2]')
-axs2[3].legend(['x', 'y', 'z'])
+# axs2[3].legend(['x', 'y', 'z'])
 plt.grid()
 
 axs2[4].plot(t, x_est[0:N, GYRO_BIAS_IDX] * 180 / np.pi * 3600)
 axs2[4].set(ylabel='Gyro bias [deg/h]')
-axs2[4].legend(['x', 'y', 'z'])
+# axs2[4].legend(['x', 'y', 'z'])
 plt.grid()
 
 fig2.suptitle('States estimates')
@@ -276,18 +263,20 @@ fig3 = plt.figure()
 
 plt.plot(NIS[:GNSSk])
 plt.plot(np.array([0, N-1]) * dt, (CI3@np.ones((1, 2))).T)
-insideCI = np.mean((CI3[0] <= NIS) * (NIS <= CI3[1]))
+insideCI = np.mean((CI3[0] <= NIS[:GNSSk]) * (NIS[:GNSSk] <= CI3[1]))
 plt.title(f'NIS ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)')
 plt.grid()
 
 # %% box plots
-# 
 # fig4 = plt.figure()
-# 
+
 # gauss_compare = np.sum(np.random.randn(3, GNSSk)**2, axis=0)
 # plt.boxplot([NIS[0:GNSSk], gauss_compare], notch=True)
-# plt.legend('NIS', 'gauss')
+# plt.legend(['NIS', 'gauss'])
 # plt.grid()
 
-# %%
+confprob = 0.95
+CI3N = np.array(scipy.stats.chi2.interval(confprob, 3 * N)) / N
+ANIS = NIS[:GNSSk].mean()
+print(rf'{"ANIS:":<20} {ANIS:^25} {CI3N}')
 plt.show()
