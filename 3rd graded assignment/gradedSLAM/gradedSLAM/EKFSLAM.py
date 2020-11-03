@@ -140,8 +140,8 @@ class EKFSLAM:
         # [[P_xx, P_xm],
         # [P_mx, P_mm]]
         P[:3, :3] = Fx @ P[:3, :3] @ Fx.T  + self.Q[:3, .3] # TODO robot cov prediction
-        P[:3, 3:] = P[:3, 3:] # TODO robot-map covariance prediction
-        P[3:, :3] = P[:3, 3:].T # TODO map-robot covariance: transpose of the above
+        P[:3, 3:] =  # TODO robot-map covariance prediction
+        P[3:, :3] =  # TODO map-robot covariance: transpose of the above
 
         assert np.allclose(P, P.T), "EKFSLAM.predict: not symmetric P"
         assert np.all(
@@ -174,9 +174,9 @@ class EKFSLAM:
 
         # None as index ads an axis with size 1 at that position.
         # Numpy broadcasts size 1 dimensions to any size when needed
-        delta_m = # TODO, relative position of landmark to sensor on robot in world frame
+        delta_m = np.array([np.linalg.norm(measurement - x[:2]) for measurement in m]) # TODO, relative position of landmark to sensor on robot in world frame
 
-        zpredcart = # TODO, predicted measurements in cartesian coordinates, beware sensor offset for VP
+        zpredcart =  # TODO, predicted measurements in cartesian coordinates, beware sensor offset for VP
 
         zpred_r = # TODO, ranges
         zpred_theta = # TODO, bearings
