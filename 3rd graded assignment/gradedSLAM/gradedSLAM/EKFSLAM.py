@@ -5,12 +5,17 @@ import scipy.linalg as la
 from utils import rotmat2d
 from JCBB import JCBB
 import utils
+from cat_slice import CatSlice
 
 # import line_profiler
 # import atexit
 
 # profile = line_profiler.LineProfiler()
 # atexit.register(profile.print_stats)
+
+POS_IDX = CatSlice(start=0, stop=3)
+VEL_IDX = CatSlice(start=3, stop=6)
+ATT_IDX = CatSlice(start=6, stop=10)
 
 
 class EKFSLAM:
@@ -45,7 +50,7 @@ class EKFSLAM:
             the predicted state
         """
         xpred = np.zeros(np.shape(x)) # TODO, eq (11.7). Should wrap heading angle between (-pi, pi), see utils.wrapToPi
-        heading_wrapped = utils.wrapToPi(u[2])
+        heading_wrapped = utils.wrapToPi(x[2])
         xpred[0] = x[0] + u[0]*np.cos(heading_wrapped) - u[1]*np.sin(heading_wrapped)
         xpred[1] = x[1] + u[0]*np.sin(heading_wrapped) + u[1]*np.cos(heading_wrapped)
         xpred[2] = x[2] + u[2]
@@ -69,7 +74,9 @@ class EKFSLAM:
         np.ndarray
             The Jacobian of f wrt. x.
         """
-        Fx = # TODO, eq (11.13)
+        Fx = np.eye(3)  # TODO, eq (11.13)
+        Fx[0, 1] = -u[0]*np.sin(x[2]) - u[1]*np.cos(x[2])
+        Fx[0, 2] = u[0]*np.cos(x[2]) - u[1]*np.sin(x[2])
 
         assert Fx.shape == (3, 3), "EKFSLAM.Fx: wrong shape"
         return Fx
