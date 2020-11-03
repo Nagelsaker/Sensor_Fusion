@@ -13,10 +13,6 @@ from cat_slice import CatSlice
 # profile = line_profiler.LineProfiler()
 # atexit.register(profile.print_stats)
 
-POS_IDX = CatSlice(start=0, stop=3)
-VEL_IDX = CatSlice(start=3, stop=6)
-ATT_IDX = CatSlice(start=6, stop=10)
-
 
 class EKFSLAM:
     def __init__(
@@ -96,7 +92,8 @@ class EKFSLAM:
         np.ndarray
             The Jacobian of f wrt. u.
         """
-        Fu = # TODO, eq (11.14)
+        Fu = np.eye(3) # TODO, eq (11.14)
+        Fu[CatSlice(start=0, stop=2) * CatSlice(start=0, stop=2)] = np.array([np.cos(x[2]), -np.sin(x[2])], [np.sin(x[2]), np.cos(x[2])])
 
         assert Fu.shape == (3, 3), "EKFSLAM.Fu: wrong shape"
         return Fu
@@ -131,20 +128,20 @@ class EKFSLAM:
         etapred = np.empty_like(eta)
 
         x = eta[:3]
-        etapred[:3] = # TODO robot state prediction
-        etapred[3:] = # TODO landmarks: no effect
+        etapred[:3] = f(x, z_odo) # TODO robot state prediction
+        etapred[3:] = x[3:] # TODO landmarks: no effect
 
-        Fx = # TODO
-        Fu = # TODO
+        Fx = Fx(x, z_odo) # TODO
+        Fu = Fu(x, z_odo) # TODO
 
         # evaluate covariance prediction in place to save computation
         # only robot state changes, so only rows and colums of robot state needs changing
         # cov matrix layout:
         # [[P_xx, P_xm],
         # [P_mx, P_mm]]
-        P[:3, :3] = # TODO robot cov prediction
-        P[:3, 3:] = # TODO robot-map covariance prediction
-        P[3:, :3] = # TODO map-robot covariance: transpose of the above
+        P[:3, :3] = Fx @ P[:3, :3] @ Fx.T  + self.Q[:3, .3] # TODO robot cov prediction
+        P[:3, 3:] = P[:3, 3:] # TODO robot-map covariance prediction
+        P[3:, :3] = P[:3, 3:].T # TODO map-robot covariance: transpose of the above
 
         assert np.allclose(P, P.T), "EKFSLAM.predict: not symmetric P"
         assert np.all(
