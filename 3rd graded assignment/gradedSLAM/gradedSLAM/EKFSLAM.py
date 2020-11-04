@@ -410,12 +410,14 @@ class EKFSLAM:
 
         if numLmk > 0:
             # Prediction and innovation covariance
-            zpred = #TODO
-            H = # TODO
+            zpred = self.h(eta) #TODO
+            H = self.H(eta)# TODO
 
             # Here you can use simply np.kron (a bit slow) to form the big (very big in VP after a while) R,
             # or be smart with indexing and broadcasting (3d indexing into 2d mat) realizing you are adding the same R on all diagonals
-            S = # TODO,
+            # S = H@P@H.T + np.kron(np.eye(numLmk), self.R) # TODO,
+            stackedNoise = np.diag(   np.array([[R[0,0], R[1,1]] for r in range(numLmk)]).reshape(numLmk*2)    )
+            S = H@P@H.T + stackedNoise # TODO,
             assert (
                 S.shape == zpred.shape * 2
             ), "EKFSLAM.update: wrong shape on either S or zpred"
@@ -426,8 +428,8 @@ class EKFSLAM:
 
             # No association could be made, so skip update
             if za.shape[0] == 0:
-                etaupd = # TODO
-                Pupd = # TODO
+                etaupd = eta # TODO
+                Pupd = P # TODO
                 NIS = 1 # TODO: beware this one when analysing consistency.
 
             else:
