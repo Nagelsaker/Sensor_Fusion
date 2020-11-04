@@ -181,7 +181,7 @@ class EKFSLAM:
         zpredcart = list(map(lambda d_m: R @ d_m, delta_m))
 
         # zpred_r = np.array([np.linalg.norm(rel_pos) for rel_pos in zpredcart]) # TODO, ranges
-        zpred_r = list(map(lambda rel_pos, la.norm(rel_pos), zpredcart))
+        zpred_r = list(map(lambda rel_pos: la.norm(rel_pos), zpredcart))
 
         zpred_theta = list(map(lambda rel_pos: np.arctan2(rel_pos[0], rel_pos[1]), zpredcart)) # TODO, bearings
 
@@ -225,10 +225,10 @@ class EKFSLAM:
         # [x coordinates;
         #  y coordinates]
 
-        zpred = np.vstack(zc, ) # TODO (2, #measurements), predicted measurements, like
+        zpred = self.h(eta) # TODO (2, #measurements), predicted measurements, like
         # [ranges;
         #  bearings]
-        zr = # TODO, ranges
+        zr = zpred[1,:]# TODO, ranges
 
         Rpihalf = rotmat2d(np.pi / 2)
 
@@ -242,6 +242,8 @@ class EKFSLAM:
         Hx = H[:, :3]  # slice view, setting elements of Hx will set H as well
         Hm = H[:, 3:]  # slice view, setting elements of Hm will set H as well
 
+
+
         # proposed way is to go through landmarks one by one
         jac_z_cb = -np.eye(2, 3)  # preallocate and update this for some speed gain if looping
         for i in range(numM):  # But this whole loop can be vectorized
@@ -249,8 +251,17 @@ class EKFSLAM:
             inds = slice(ind, ind + 2)  # the inds slice for the ith landmark into H
 
             # TODO: Set H or Hx and Hm here
+            d_m = delta_m[:,i]
+            Hx[inds] = -np.array([[1/la.norm(d_m) @ d_m.T, 0],
+                            [1/la.norm(d_m)**2 @ d_m.T @ Rpihalf, 1]])
+            
+            Hm[inds] = (1/la.norm(d_m)**2) * np.array([[la.norm(d_m) @ d_m.T],
+                                                    [d_m.T@Rpihalf]])
 
         # TODO: You can set some assertions here to make sure that some of the structure in H is correct
+        assert H (
+            H.shape[0] == 2 * numM and H.shape[1] == 3 + 2 * numM
+        ), "SLAM.H: Wrong shape on H"
         return H
 
     def add_landmarks(
@@ -291,21 +302,23 @@ class EKFSLAM:
             inds = slice(ind, ind + 2)
             zj = z[inds]
 
-            rot = # TODO, rotmat in Gz
-            lmnew[inds] = # TODO, calculate position of new landmark in world frame
+            rot = rotmat2d(zj[1] + eta[2])# TODO, rotmat in Gz
 
-            Gx[inds, :2] = # TODO
-            Gx[inds, 2] = # TODO
+            # lmnew(inds) = Rbody * (p2c(zj) + obj.sensOffset) + eta(1:2); % mean
+            lmnew[inds] = sensor_offset_world @ zj[0] + eta[:2] # TODO, calculate position of new landmark in world frame
 
-            Gz = # TODO
+            Gx[inds, :2] = I2# TODO
+            Gx[inds, 2] = np.array([zj[0] @ np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der @ self.sensor_offset])# TODO
 
-            Rall[inds, inds] = # TODO, Gz * R * Gz^T, transform measurement covariance from polar to cartesian coordinates
+            Gz = rot@np.diag([1, zj[0]])# TODO
+
+            Rall[inds, inds] = Gz @ self.R @ Gz.T # TODO, Gz * R * Gz^T, transform measurement covariance from polar to cartesian coordinates
 
         assert len(lmnew) % 2 == 0, "SLAM.add_landmark: lmnew not even length"
-        etaadded = # TODO, append new landmarks to state vector
-        Padded = # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
-        Padded[n:, :n] = # TODO, top right corner of P_new
-        Padded[:n, n:] = # TODO, transpose of above. Should yield the same as calcualion, but this enforces symmetry and should be cheaper
+        etaadded = np.vstack(eta, lmnew)# TODO, append new landmarks to state vector
+        Padded = np.diag([P, Gx@P[:3,:3]@Gx.T + Rall]) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
+        Padded[n:, :n] = Gx@P[:3, :] # TODO, top right corner of P_new
+        Padded[:n, n:] = Padded[n:, :n].T # TODO, transpose of above. Should yield the same as calcualion, but this enforces symmetry and should be cheaper
 
         assert (
             etaadded.shape * 2 == Padded.shape
