@@ -171,7 +171,7 @@ class EKFSLAM:
         m = eta[3:].reshape((-1, 2)).T
 
         Rot = rotmat2d(-x[2])
-        Rot_pos = rotmat2d(-x[2])
+        Rot_pos = rotmat2d(x[2])
 
         # None as index ads an axis with size 1 at that position.
         # Numpy broadcasts size 1 dimensions to any size when needed
@@ -180,8 +180,8 @@ class EKFSLAM:
         # zpredcart = np.array([R @ d_m for d_m in delta_m]) # TODO, predicted measurements in cartesian coordinates, beware sensor offset for VP
         zpredcart = list(map(lambda d_m: R @ d_m, delta_m))
 
-        # zpred_r = np.array([np.linalg.norm(rel_pos) for rel_pos in zpredcart]) # TODO, ranges
-        zpred_r = list(map(lambda rel_pos, la.norm(rel_pos), zpredcart))
+        # zpred_r = np.array([la.norm(rel_pos) for rel_pos in zpredcart]) # TODO, ranges
+        zpred_r = list(map(lambda rel_pos: la.norm(rel_pos), zpredcart))
 
         zpred_theta = list(map(lambda rel_pos: np.arctan2(rel_pos[0], rel_pos[1]), zpredcart)) # TODO, bearings
 
@@ -219,16 +219,16 @@ class EKFSLAM:
 
         Rot = rotmat2d(x[2])
 
-        delta_m = # TODO, relative position of landmark to robot in world frame. m - rho that appears in (11.15) and (11.16)
+        delta_m = list(map(lambda l: l - x[:2] - Rot_pos @ self.sensor_offset, m)) # TODO, relative position of landmark to robot in world frame. m - rho that appears in (11.15) and (11.16)
 
-        zc = # TODO, (2, #measurements), each measured position in cartesian coordinates like
+        zc = m # TODO, (2, #measurements), each measured position in cartesian coordinates like
         # [x coordinates;
         #  y coordinates]
 
-        zpred = # TODO (2, #measurements), predicted measurements, like
+        zpred = h(self, eta).reshape((-1,2)).T # TODO (2, #measurements), predicted measurements, like
         # [ranges;
         #  bearings]
-        zr = # TODO, ranges
+        zr = zpred[0, :] # TODO, ranges
 
         Rpihalf = rotmat2d(np.pi / 2)
 
@@ -239,10 +239,12 @@ class EKFSLAM:
         # Allocate H and set submatrices as memory views into H
         # You may or may not want to do this like this
         H = np.zeros((2 * numM, 3 + 2 * numM)) # TODO, see eq (11.15), (11.16), (11.17)
-        Hx = H[:, :3]  # slice view, setting elements of Hx will set H as well
-        Hm = H[:, 3:]  # slice view, setting elements of Hm will set H as well
+        H[:, :3] = np.array([-delta_m.T/la.norm(delta_m), 0], [(-delta_m.T @ Rpihalf)/la.norm(delta_m), 1]) # sverre: det er hintet noe annet i opppgaveteksten
+        H[:, 3:] = la.block_diag(np.array([la.norm(delta_m) @ delta_m.T, delta_m.T @ Rpihalf]).T / la.norm(delta_m) ** 2)
+        # Hx = H[:, :3]  # slice view, setting elements of Hx will set H as well
+        # Hm = H[:, 3:]  # slice view, setting elements of Hm will set H as well
 
-        # proposed way is to go through landmarks one by one
+        proposed way is to go through landmarks one by one
         jac_z_cb = -np.eye(2, 3)  # preallocate and update this for some speed gain if looping
         for i in range(numM):  # But this whole loop can be vectorized
             ind = 2 * i # starting postion of the ith landmark into H
