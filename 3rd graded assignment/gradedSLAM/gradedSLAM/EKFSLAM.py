@@ -309,7 +309,7 @@ class EKFSLAM:
             # Simon: sensor_offset_world er ikke rot matrise, men en korreksjonsvektor - nå skal det være riktig
 
             Gx[inds, :2] = I2# TODO
-            Gx[inds, 2] = np.array([zj[0] @ np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der])# TODO
+            Gx[inds, 2] = np.array([zj[0] * np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der])# TODO
             # sverre: den siste faktoren i uttrykket ovenfor allerede er inkludert i sensor_offset_world_der
 
             Gz = rot@np.diag([1, zj[0]])# TODO
@@ -317,8 +317,12 @@ class EKFSLAM:
             Rall[inds, inds] = Gz @ self.R @ Gz.T # TODO, Gz * R * Gz^T, transform measurement covariance from polar to cartesian coordinates
 
         assert len(lmnew) % 2 == 0, "SLAM.add_landmark: lmnew not even length"
-        etaadded = np.vstack(eta, lmnew)# TODO, append new landmarks to state vector
-        Padded = np.diag([P, Gx@P[:3,:3]@Gx.T + Rall]) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
+        # etaadded = np.vstack(eta, lmnew)# TODO, append new landmarks to state vector
+        etaadded = np.append(eta, lmnew)
+        # sverre: endret etaadded
+        # Padded = np.diag([P, Gx@P[:3,:3]@Gx.T + Rall]) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
+        Padded = la.block_diag(P, Gx@P[:3,:3]@Gx.T + Rall)
+        # sverre: endret Padded
         Padded[n:, :n] = Gx@P[:3, :] # TODO, bottom left corner of P_new
         Padded[:n, n:] = Padded[n:, :n].T # TODO, transpose of above. Should yield the same as calcualion, but this enforces symmetry and should be cheaper
 
