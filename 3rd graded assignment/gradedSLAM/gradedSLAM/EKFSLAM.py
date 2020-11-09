@@ -93,7 +93,7 @@ class EKFSLAM:
             The Jacobian of f wrt. u.
         """
         Fu = np.eye(3) # TODO, eq (11.14)
-        Fu[CatSlice(start=0, stop=2) * CatSlice(start=0, stop=2)] = np.array([np.cos(x[2]), -np.sin(x[2])], [np.sin(x[2]), np.cos(x[2])])
+        Fu[CatSlice(start=0, stop=2) * CatSlice(start=0, stop=2)] = np.array([[np.cos(x[2]), -np.sin(x[2])], [np.sin(x[2]), np.cos(x[2])]])
 
         assert Fu.shape == (3, 3), "EKFSLAM.Fu: wrong shape"
         return Fu
@@ -129,7 +129,8 @@ class EKFSLAM:
 
         x = eta[:3]
         etapred[:3] = self.f(x, z_odo) # TODO robot state prediction
-        etapred[3:] = x[3:] # TODO landmarks: no effect
+        # etapred[3:] = x[3:] # TODO landmarks: no effect
+        etapred[3:] = eta[3:] # TODO landmarks: no effect
 
         Fx = self.Fx(x, z_odo) # TODO
         Fu = self.Fu(x, z_odo) # TODO
@@ -175,7 +176,7 @@ class EKFSLAM:
 
         # None as index ads an axis with size 1 at that position.
         # Numpy broadcasts size 1 dimensions to any size when needed
-        delta_m = list(map(lambda l: l - x[:2] - Rot_pos @ self.sensor_offset, m)) # TODO, relative position of landmark to sensor on robot in world frame 
+        delta_m = list(map(lambda l: l - x[:2] - Rot_pos @ self.sensor_offset, m.T)) # TODO, relative position of landmark to sensor on robot in world frame 
         
         zpredcart = list(map(lambda d_m: Rot_neg @ d_m, delta_m)) # TODO, predicted measurements in cartesian coordinates, beware sensor offset for VP
 
@@ -183,7 +184,7 @@ class EKFSLAM:
 
         zpred_theta = list(map(lambda rel_pos: np.arctan2(rel_pos[0], rel_pos[1]), zpredcart)) # TODO, bearings
 
-        zpred = np.stacK(zpred_r, zpred_theta) # TODO, the two arrays above stacked on top of each other vertically like 
+        zpred = np.stack((zpred_r, zpred_theta)) # TODO, the two arrays above stacked on top of each other vertically like 
         # [ranges; 
         #  bearings]
         # into shape (2, #lmrk) 
@@ -227,7 +228,7 @@ class EKFSLAM:
         zpred = self.h(eta) # TODO (2, #measurements), predicted measurements, like
         # [ranges;
         #  bearings]
-        zr = zpred[1,:]# TODO, ranges
+        zr = zpred[:-1:2] # TODO, ranges
 
         Rpihalf = rotmat2d(np.pi / 2)
 
@@ -247,9 +248,10 @@ class EKFSLAM:
             ind = 2 * i # starting postion of the ith landmark into H
 
             # TODO: Set H or Hx and Hm here
+            # Simon: Feil her
             d_m = delta_m[:,i]
-            Hx[ind] = -np.array([[1/la.norm(d_m) @ d_m.T, 0],
-                            [1/la.norm(d_m)**2 @ d_m.T @ Rpihalf, 1]])
+            Hx[ind] = -np.array([[1/la.norm(d_m) * d_m.T, 0],
+                            [1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1]])
             
             Hm[ind] = (1/la.norm(d_m)**2) * np.array([[la.norm(d_m) @ d_m.T],
                                                     [d_m.T@Rpihalf]])
@@ -309,7 +311,7 @@ class EKFSLAM:
             # Simon: sensor_offset_world er ikke rot matrise, men en korreksjonsvektor - nå skal det være riktig
 
             Gx[inds, :2] = I2# TODO
-            Gx[inds, 2] = np.array([zj[0] @ np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der])# TODO
+            Gx[inds, 2] = np.array([zj[0] * np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der])# TODO
             # sverre: den siste faktoren i uttrykket ovenfor allerede er inkludert i sensor_offset_world_der
 
             Gz = rot@np.diag([1, zj[0]])# TODO
@@ -317,8 +319,8 @@ class EKFSLAM:
             Rall[inds, inds] = Gz @ self.R @ Gz.T # TODO, Gz * R * Gz^T, transform measurement covariance from polar to cartesian coordinates
 
         assert len(lmnew) % 2 == 0, "SLAM.add_landmark: lmnew not even length"
-        etaadded = np.vstack(eta, lmnew)# TODO, append new landmarks to state vector
-        Padded = np.diag([P, Gx@P[:3,:3]@Gx.T + Rall]) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
+        etaadded = np.concatenate((eta, lmnew))# TODO, append new landmarks to state vector
+        Padded = la.block_diag(P, Gx@P[:3,:3]@Gx.T + Rall) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
         Padded[n:, :n] = Gx@P[:3, :] # TODO, bottom left corner of P_new
         Padded[:n, n:] = Padded[n:, :n].T # TODO, transpose of above. Should yield the same as calcualion, but this enforces symmetry and should be cheaper
 
