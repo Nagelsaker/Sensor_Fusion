@@ -302,12 +302,14 @@ class EKFSLAM:
             rot = rotmat2d(zj[1] + eta[2])# TODO, rotmat in Gz
 
             # lmnew(inds) = Rbody * (p2c(zj) + obj.sensOffset) + eta(1:2); % mean
-            # lmnew[inds] = sensor_offset_world @ zj[0] + eta[:2] # TODO, calculate position of new landmark in world frame
-            lmnew(inds) = zj[0] * sensor_offset_world @ np.array([np.cos(zj[1]), np.sin(zj[1])]).T + eta[:2])
+
+            lmnew[inds] = sensor_offset_world + zj[0]*np.array([np.cos(zj[1]), np.sin(zj[1])]).T + eta[:2] # TODO, calculate position of new landmark in world frame
+            # lmnew(inds) = zj[0] * sensor_offset_world@np.array([np.cos(zj[1]), np.sin(zj[1])]).T + eta[:2])
             # sverre: zj[0] er vel bare range som må gjøres om til koordinater ved å gange med [cos(psi), sin(psi)].T?
+            # Simon: sensor_offset_world er ikke rot matrise, men en korreksjonsvektor - nå skal det være riktig
 
             Gx[inds, :2] = I2# TODO
-            Gx[inds, 2] = np.array([zj[0] @ np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der) # @ self.sensor_offset])# TODO
+            Gx[inds, 2] = np.array([zj[0] @ np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der])# TODO
             # sverre: den siste faktoren i uttrykket ovenfor allerede er inkludert i sensor_offset_world_der
 
             Gz = rot@np.diag([1, zj[0]])# TODO
@@ -417,7 +419,8 @@ class EKFSLAM:
             # or be smart with indexing and broadcasting (3d indexing into 2d mat) realizing you are adding the same R on all diagonals
             # S = H@P@H.T + np.kron(np.eye(numLmk), self.R) # TODO,
             stackedNoise = np.diag(   np.array([[self.R[0,0], self.R[1,1]] for r in range(numLmk)]).reshape(numLmk*2)    )
-            S = H @ P @ H.T + stackedNoise # TODO,
+            S = H @ P @ H.T + stackedNoise # T
+            ODO,
             assert (
                 S.shape == zpred.shape * 2
             ), "EKFSLAM.update: wrong shape on either S or zpred"
