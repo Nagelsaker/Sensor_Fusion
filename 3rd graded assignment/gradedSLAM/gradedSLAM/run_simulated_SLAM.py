@@ -77,7 +77,7 @@ from EKFSLAM import EKFSLAM
 from plotting import ellipse
 
 # %% Load data
-simSLAM_ws = loadmat("simulatedSLAM")
+simSLAM_ws = loadmat("gradedSLAM/simulatedSLAM")
 
 ## NB: this is a MATLAB cell, so needs to "double index" to get out the measurements of a time step k:
 #
