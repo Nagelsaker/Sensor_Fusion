@@ -93,7 +93,7 @@ class EKFSLAM:
             The Jacobian of f wrt. u.
         """
         Fu = np.eye(3) # TODO, eq (11.14)
-        Fu[CatSlice(start=0, stop=2) * CatSlice(start=0, stop=2)] = np.array([np.cos(x[2]), -np.sin(x[2])], [np.sin(x[2]), np.cos(x[2])])
+        Fu[CatSlice(start=0, stop=2) * CatSlice(start=0, stop=2)] = np.array([[np.cos(x[2]), -np.sin(x[2])], [np.sin(x[2]), np.cos(x[2])]])
 
         assert Fu.shape == (3, 3), "EKFSLAM.Fu: wrong shape"
         return Fu
@@ -129,7 +129,7 @@ class EKFSLAM:
 
         x = eta[:3]
         etapred[:3] = self.f(x, z_odo) # TODO robot state prediction
-        etapred[3:] = x[3:] # TODO landmarks: no effect
+        etapred[3:] = eta[3:] # TODO landmarks: no effect
 
         Fx = self.Fx(x, z_odo) # TODO
         Fu = self.Fu(x, z_odo) # TODO
