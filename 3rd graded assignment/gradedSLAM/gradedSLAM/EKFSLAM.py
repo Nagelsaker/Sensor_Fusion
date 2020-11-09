@@ -248,16 +248,15 @@ class EKFSLAM:
 
             # TODO: Set H or Hx and Hm here
             # Simon: Feil her
-            d_m = delta_m[:,i]
-            Hx[ind] = -np.array([[1/la.norm(d_m) * d_m.T, 0],
-                            [1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1]])
+            d_m = delta_m[i]
+            Hx[ind:(ind+2)] = -np.array([np.hstack([1/la.norm(d_m) * d_m, 0]),
+                            np.hstack([1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1])])
             
-            Hm[ind] = (1/la.norm(d_m)**2) * np.array([[la.norm(d_m) @ d_m.T],
-                                                    [d_m.T@Rpihalf]])
+            Hm[ind:(ind+2),ind:(ind+2)] = (1/la.norm(d_m)**2) * np.array([la.norm(d_m)*d_m.T, d_m.T@Rpihalf])
 
         # TODO: You can set some assertions here to make sure that some of the structure in H is correct
 
-        assert H (
+        assert (
             H.shape[0] == 2 * numM and H.shape[1] == 3 + 2 * numM
         ), "SLAM.H: Wrong shape on H"
         return H
@@ -427,8 +426,7 @@ class EKFSLAM:
             # or be smart with indexing and broadcasting (3d indexing into 2d mat) realizing you are adding the same R on all diagonals
             # S = H@P@H.T + np.kron(np.eye(numLmk), self.R) # TODO,
             stackedNoise = np.diag(   np.array([[self.R[0,0], self.R[1,1]] for r in range(numLmk)]).reshape(numLmk*2)    )
-            S = H @ P @ H.T + stackedNoise # T
-            ODO,
+            S = H @ P @ H.T + stackedNoise # TODO,
             assert (
                 S.shape == zpred.shape * 2
             ), "EKFSLAM.update: wrong shape on either S or zpred"
