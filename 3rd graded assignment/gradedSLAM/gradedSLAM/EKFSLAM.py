@@ -313,24 +313,31 @@ class EKFSLAM:
 
             rot = rotmat2d(zj[1] + eta[2])# TODO, rotmat in Gz
 
-            # lmnew[inds] = sensor_offset_world + zj[0]*np.array([np.cos(zj[1]), np.sin(zj[1])]).T + eta[:2] # TODO, calculate position of new landmark in world frame
-            lmnew[inds] = sensor_offset_world + zj[0]*rot[:,0]
+            # lmnew(inds) = Rbody * (p2c(zj) + obj.sensOffset) + eta(1:2); % mean
+
+            lmnew[inds] = sensor_offset_world + zj[0]*np.array([np.cos(zj[1]), np.sin(zj[1])]).T + eta[:2] # TODO, calculate position of new landmark in world frame
+            # lmnew(inds) = zj[0] * sensor_offset_world@np.array([np.cos(zj[1]), np.sin(zj[1])]).T + eta[:2])
+            # sverre: zj[0] er vel bare range som må gjøres om til koordinater ved å gange med [cos(psi), sin(psi)].T?
+            # Simon: sensor_offset_world er ikke rot matrise, men en korreksjonsvektor - nå skal det være riktig
 
             Gx[inds, :2] = I2# TODO
             Gx[inds, 2] = np.array([zj[0] * np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der])# TODO
-            Gx[inds, 2] = sensor_offset_world_der + zj[0] * rot[:,1]
+            # sverre: den siste faktoren i uttrykket ovenfor allerede er inkludert i sensor_offset_world_der
 
-            Gz = rot @ np.diag([1, zj[0]])# TODO
+            Gz = rot@np.diag([1, zj[0]])# TODO
 
             Rall[inds, inds] = Gz @ self.R @ Gz.T # TODO, Gz * R * Gz^T, transform measurement covariance from polar to cartesian coordinates
 
         assert len(lmnew) % 2 == 0, "SLAM.add_landmark: lmnew not even length"
         # etaadded = np.concatenate((eta, lmnew))# TODO, append new landmarks to state vector
         # Padded = la.block_diag(P, Gx@P[:3,:3]@Gx.T + Rall) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
+        # etaadded = np.vstack(eta, lmnew)# TODO, append new landmarks to state vector
+        # Simon: Fikset etaadded of Padded
         etaadded = np.append(eta, lmnew)
         # sverre: endret etaadded
         # Padded = np.diag([P, Gx@P[:3,:3]@Gx.T + Rall]) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
         Padded = la.block_diag(P, Gx@P[:3,:3]@Gx.T + Rall)
+        # sverre: endret Padded
         Padded[n:, :n] = Gx@P[:3, :] # TODO, bottom left corner of P_new
         Padded[:n, n:] = Padded[n:, :n].T # TODO, transpose of above. Should yield the same as calcualion, but this enforces symmetry and should be cheaper
 
@@ -452,19 +459,17 @@ class EKFSLAM:
                 v[1::2] = utils.wrapToPi(v[1::2])
 
                 # Kalman mean update
-                S_cho_factors = la.cho_factor(Sa) # Optional, used in places for S^-1, see scipy.linalg.cho_factor and scipy.linalg.cho_solve
-                W = la.cho_solve(S_cho_factors, Ha @ P).T
-                # W = P @ Ha.T @ la.inv(Sa) # TODO, Kalman gain, can use S_cho_factors
+                # S_cho_factors = la.cho_factor(Sa) # Optional, used in places for S^-1, see scipy.linalg.cho_factor and scipy.linalg.cho_solve
+                W = P @ Ha.T @ la.inv(Sa) # TODO, Kalman gain, can use S_cho_factors
                 etaupd = eta + W @ v # TODO, Kalman update                         sverre: skal hele eta oppdateres eller bare tilstandene (ikke map'et)
 
                 # Kalman cov update: use Joseph form for stability
                 jo = -W @ Ha
                 jo[np.diag_indices(jo.shape[0])] += 1  # same as adding Identity mat
-                Pupd = jo @ P @ jo.T + W @ np.kron(np.eye(za.size//2),self.R) @ W.T # TODO, Kalman update. This is the main workload on VP after speedups
+                Pupd = jo @ P @ jo.T + W @ np.kron(np.eye(za.size//2)) @ W.T # TODO, Kalman update. This is the main workload on VP after speedups
 
                 # calculate NIS, can use S_cho_factors
-                # NIS = v.T @ la.inv(Sa) @ v # TODO
-                NIS = v.T @ la.cho_solve(S_cho_factors, v)
+                NIS = v.T @ la.inv(S) @ v # TODO
 
                 # When tested, remove for speed
                 assert np.allclose(Pupd, Pupd.T), "EKFSLAM.update: Pupd not symmetric"
