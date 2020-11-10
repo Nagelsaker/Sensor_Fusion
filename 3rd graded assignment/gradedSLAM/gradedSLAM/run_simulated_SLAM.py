@@ -104,6 +104,17 @@ max_range = abs(landmarks[:,0]).max()
 doAsso = True
 
 JCBBalphas = np.array([1e-5, 1e-5]) # TODO,  # first is for joint compatibility, second is individual
+
+# Q = np.array([[(7e-2)**2,0,0],
+#             [0,(7e-2)**2,0],
+#             [0,0,(2e-2)**2]])*1e-1# TODO
+
+# R = np.array([[(4e-2)**2, 0],
+#             [0, (2e-2)**2]])*2e0# TODO
+
+# doAsso = True
+
+# JCBBalphas = np.array([1e-10, 1e-10]) # TODO,  # first is for joint compatibility, second is individual
 # these can have a large effect on runtime either through the number of landmarks created
 # or by the size of the association search space.
 
@@ -154,7 +165,7 @@ for k, z_k in tqdm(enumerate(z[:N])):
 
     num_asso = np.count_nonzero(a[k] > -1)
 
-    CI[k] = chi2.interval(alpha, 2 * num_asso)
+    CI[k] = chi2.interval(1-alpha, 2 * num_asso)
 
     if num_asso > 0:
         NISnorm[k] = NIS[k] / (2 * num_asso)
