@@ -247,7 +247,6 @@ class EKFSLAM:
             ind = 2 * i # starting postion of the ith landmark into H
 
             # TODO: Set H or Hx and Hm here
-            # Simon: Feil her
             d_m = delta_m[i]
             Hx[ind:(ind+2)] = -np.array([np.hstack([1/la.norm(d_m) * d_m, 0]),
                             np.hstack([1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1])])
