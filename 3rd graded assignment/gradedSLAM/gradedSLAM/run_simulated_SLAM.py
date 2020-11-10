@@ -118,7 +118,7 @@ JCBBalphas = np.array([1e-5, 1e-5]) # TODO,  # first is for joint compatibility,
 # these can have a large effect on runtime either through the number of landmarks created
 # or by the size of the association search space.
 
-slam = EKFSLAM(Q, R, do_asso=doAsso, alphas=JCBBalphas, max_range=max_range)
+slam = EKFSLAM(Q, R, do_asso=doAsso, alphas=JCBBalphas)
 
 # allocate
 eta_pred: List[Optional[np.ndarray]] = [None] * K
@@ -148,7 +148,7 @@ if doAssoPlot:
     figAsso, axAsso = plt.subplots(num=1, clear=True)
 
 # %% Run simulation
-N = 50 #K
+N = K
 
 print("starting sim (" + str(N) + " iterations)")
 
