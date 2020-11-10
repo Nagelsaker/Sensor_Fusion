@@ -46,10 +46,11 @@ class EKFSLAM:
             the predicted state
         """
         xpred = np.zeros(np.shape(x)) # TODO, eq (11.7). Should wrap heading angle between (-pi, pi), see utils.wrapToPi
-        heading_wrapped = utils.wrapToPi(x[2])
-        xpred[0] = x[0] + u[0]*np.cos(heading_wrapped) - u[1]*np.sin(heading_wrapped)
-        xpred[1] = x[1] + u[0]*np.sin(heading_wrapped) + u[1]*np.cos(heading_wrapped)
-        xpred[2] = x[2] + u[2]
+        # heading_wrapped = utils.wrapToPi(x[2])
+        xpred[0] = x[0] + u[0]*np.cos(x[2]) - u[1]*np.sin(x[2])
+        xpred[1] = x[1] + u[0]*np.sin(x[2]) + u[1]*np.cos(x[2])
+        # xpred[2] = x[2] + u[2]
+        xpred[2] = utils.wrapToPi(x[2] + u[2])
 
 
         assert xpred.shape == (3,), "EKFSLAM.f: wrong shape for xpred"
@@ -71,8 +72,8 @@ class EKFSLAM:
             The Jacobian of f wrt. x.
         """
         Fx = np.eye(3)  # TODO, eq (11.13)
-        Fx[0, 1] = -u[0]*np.sin(x[2]) - u[1]*np.cos(x[2])
-        Fx[0, 2] = u[0]*np.cos(x[2]) - u[1]*np.sin(x[2])
+        Fx[0, 2] = -u[0]*np.sin(x[2]) - u[1]*np.cos(x[2])
+        Fx[1, 2] = u[0]*np.cos(x[2]) - u[1]*np.sin(x[2])
 
         assert Fx.shape == (3, 3), "EKFSLAM.Fx: wrong shape"
         return Fx
@@ -217,17 +218,19 @@ class EKFSLAM:
 
         Rot = rotmat2d(x[2])
 
-        delta_m = np.array([m[:,i] - x[:2] - Rot @ self.sensor_offset for i in range(numM)]) # TODO, relative position of landmark to robot in world frame. m - rho that appears in (11.15) and (11.16)
+        # delta_m = np.array([m[:,i] - x[:2] for i in range(numM)]).T # TODO, relative position of landmark to robot in world frame. m - rho that appears in (11.15) and (11.16)
+        delta_m = list(map(lambda l: l - x[:2], m.T))
 
         # zc = np.array([delta_m[:,i] - Rot @ self.sensor_offset for i in range(numM)]) # TODO, (2, #measurements), each measured position in cartesian coordinates like
-        # zc = list(map(lambda l: l - x[:2] - Rot @ self.sensor_offset, m)) 
+        zc = list(map(lambda d_m: d_m - Rot @ self.sensor_offset, delta_m))
         # [x coordinates;
         #  y coordinates]
 
-        zpred = self.h(eta) # TODO (2, #measurements), predicted measurements, like
+        zpred = self.h(eta).reshape(-1,2).T # TODO (2, #measurements), predicted measurements, like
         # [ranges;
         #  bearings]
-        zr = zpred[:-1:2] # TODO, ranges
+        # zr = zpred[-1:2] # TODO, ranges
+        zr = zpred[0]
 
         Rpihalf = rotmat2d(np.pi / 2)
 
@@ -242,17 +245,22 @@ class EKFSLAM:
         Hx = H[:, :3]  # slice view, setting elements of Hx will set H as well
         Hm = H[:, 3:]  # slice view, setting elements of Hm will set H as well
 
-        # jac_z_cb = -np.eye(2, 3)  # preallocate and update this for some speed gain if looping
+        jac_z_cb = -np.eye(2, 3)  # preallocate and update this for some speed gain if looping
         for i in range(numM):  # But this whole loop can be vectorized
             ind = 2 * i # starting postion of the ith landmark into H
 
             # TODO: Set H or Hx and Hm here
             # Simon: Feil her
             d_m = delta_m[i]
-            Hx[ind:(ind+2)] = -np.array([np.hstack([1/la.norm(d_m) * d_m, 0]),
-                            np.hstack([1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1])])
+            # Hx[ind:(ind+2)] = -np.array([np.hstack([1/la.norm(d_m) * d_m, 0]),
+                            # np.hstack([1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1])])
+
+            jac_z_cb[:, 2] = -Rpihalf @ d_m
             
-            Hm[ind:(ind+2),ind:(ind+2)] = (1/la.norm(d_m)**2) * np.array([la.norm(d_m)*d_m.T, d_m.T@Rpihalf])
+            Hx[ind] = zc[i].T/zr[i] @ jac_z_cb
+            Hx[ind+1] = (zc[i].T @ Rpihalf.T)/zr[i] @ jac_z_cb
+            
+            Hm[ind:ind+2, ind:ind+2] = (1/zr[i]) * np.vstack((zr[i] * d_m.T, d_m.T @ Rpihalf))
 
         # TODO: You can set some assertions here to make sure that some of the structure in H is correct
 
