@@ -22,6 +22,7 @@ class EKFSLAM:
         do_asso=False,
         alphas=np.array([0.001, 0.0001]),
         sensor_offset=np.zeros(2),
+        max_range=5000,
     ):
 
         self.Q = Q
@@ -29,6 +30,7 @@ class EKFSLAM:
         self.do_asso = do_asso
         self.alphas = alphas
         self.sensor_offset = sensor_offset
+        self.max_range = max_range
 
     def f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         """Add the odometry u to the robot state x.
@@ -247,19 +249,22 @@ class EKFSLAM:
 
         jac_z_cb = -np.eye(2, 3)  # preallocate and update this for some speed gain if looping
         for i in range(numM):  # But this whole loop can be vectorized
-            ind = 2 * i # starting postion of the ith landmark into H
+            if zr[i] <= self.max_range:
+                ind = 2 * i # starting postion of the ith landmark into H
 
-            # TODO: Set H or Hx and Hm here
-            d_m = delta_m[i]
-            # Hx[ind:(ind+2)] = -np.array([np.hstack([1/la.norm(d_m) * d_m, 0]),
-                            # np.hstack([1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1])])
+                # TODO: Set H or Hx and Hm here
+                d_m = delta_m[i]
+                # Hx[ind:(ind+2)] = -np.array([np.hstack([1/la.norm(d_m) * d_m, 0]),
+                                # np.hstack([1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1])])
 
-            jac_z_cb[:, 2] = -Rpihalf @ d_m
-            
-            Hx[ind] = zc[i].T/zr[i] @ jac_z_cb
-            Hx[ind+1] = (zc[i].T @ Rpihalf.T)/zr[i] @ jac_z_cb
-            
-            Hm[ind:ind+2, ind:ind+2] = (1/zr[i]) * np.vstack((zr[i] * d_m.T, d_m.T @ Rpihalf))
+                jac_z_cb[:, 2] = -Rpihalf @ d_m
+                
+                Hx[ind] = zc[i].T/zr[i] @ jac_z_cb
+                Hx[ind+1] = (zc[i].T @ Rpihalf.T)/zr[i] @ jac_z_cb
+                
+                Hm[ind:ind+2, ind:ind+2] = (1/zr[i]) * np.vstack((zr[i] * d_m.T, d_m.T @ Rpihalf))
+            else:
+                print("Landmark not detected")
 
         # TODO: You can set some assertions here to make sure that some of the structure in H is correct
 
