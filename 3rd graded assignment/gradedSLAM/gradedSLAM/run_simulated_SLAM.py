@@ -77,7 +77,7 @@ from EKFSLAM import EKFSLAM
 from plotting import ellipse
 
 # %% Load data
-simSLAM_ws = loadmat("gradedSLAM/simulatedSLAM")
+simSLAM_ws = loadmat("simulatedSLAM")
 
 ## NB: this is a MATLAB cell, so needs to "double index" to get out the measurements of a time step k:
 #
@@ -96,13 +96,26 @@ K = len(z)
 M = len(landmarks)
 
 # %% Initilize
-Q = np.diag([1e-5, 1e-5, 1e-5])**2 # TODO
-R = np.diag([1e-5, 1e-5])**2 # TODO
+Q = np.diag([0.05, 0.05, 0.012**2]) # TODO
+R = np.diag([(4e-2)**2, (4e-2)**2]) # TODO
 
+max_range = abs(landmarks[:,0]).max()
 
 doAsso = True
 
-JCBBalphas = np.array([1e-6, 1e-6]) # TODO,  # first is for joint compatibility, second is individual
+JCBBalphas = np.array([1e-4, 1e-4]) # TODO,  # first is for joint compatibility, second is individual
+
+
+# Q = np.array([[(7e-2)**2,0,0],
+#             [0,(7e-2)**2,0],
+#             [0,0,(2e-2)**2]])*1e-1# TODO
+
+# R = np.array([[(4e-2)**2, 0],
+#             [0, (2e-2)**2]])*2e0# TODO
+
+# doAsso = True
+
+# JCBBalphas = np.array([1e-10, 1e-10]) # TODO,  # first is for joint compatibility, second is individual
 # these can have a large effect on runtime either through the number of landmarks created
 # or by the size of the association search space.
 
@@ -136,7 +149,7 @@ if doAssoPlot:
     figAsso, axAsso = plt.subplots(num=1, clear=True)
 
 # %% Run simulation
-N = 50
+N = K
 
 print("starting sim (" + str(N) + " iterations)")
 
