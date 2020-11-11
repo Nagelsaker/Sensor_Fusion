@@ -96,19 +96,13 @@ K = len(z)
 M = len(landmarks)
 
 # %% Initilize
-# Q = np.diag([1, 1, 1]) # TODO
-# R = np.diag([1, 1]) # TODO
+Q = np.diag([1e-5, 1e-5, 1e-5])**2 # TODO
+R = np.diag([1e-5, 1e-5])**2 # TODO
 
-Q = np.array([[(7e-2)**2,0,0],
-            [0,(7e-2)**2,0],
-            [0,0,(2e-2)**2]])*1e-1# TODO
-
-R = np.array([[(4e-2)**2, 0],
-            [0, (2e-2)**2]])*2e0# TODO
 
 doAsso = True
 
-JCBBalphas = np.array([1e-10, 1e-10]) # TODO,  # first is for joint compatibility, second is individual
+JCBBalphas = np.array([1e-6, 1e-6]) # TODO,  # first is for joint compatibility, second is individual
 # these can have a large effect on runtime either through the number of landmarks created
 # or by the size of the association search space.
 
@@ -142,7 +136,7 @@ if doAssoPlot:
     figAsso, axAsso = plt.subplots(num=1, clear=True)
 
 # %% Run simulation
-N = 10 #K
+N = 50
 
 print("starting sim (" + str(N) + " iterations)")
 
@@ -250,7 +244,7 @@ for ax, tag, NEES, df in zip(ax4, tags, NEESes.T, dfs):
     insideCI = (CI_NEES[0] <= NEES) * (NEES <= CI_NEES[1])
     ax.set_title(f'NEES {tag}: {insideCI.mean()*100}% inside CI')
 
-    CI_ANEES = np.array(chi2.interval(alpha, df*N)) / N
+    CI_ANEES = np.array(chi2.interval(1-alpha, df*N)) / N
     print(f"CI ANEES {tag}: {CI_ANEES}")
     print(f"ANEES {tag}: {NEES.mean()}")
 

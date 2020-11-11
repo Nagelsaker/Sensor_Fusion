@@ -171,23 +171,32 @@ class EKFSLAM:
         ## reshape map (2, #landmarks), m[:, j] is the jth landmark
         m = eta[3:].reshape((-1, 2)).T
 
-        Rot_neg = rotmat2d(-x[2]) # sverre: WORLD -> BODY
-        Rot_pos = rotmat2d(x[2]) # sverre: BODY -> WORLD
+        # Rot_neg = rotmat2d(-x[2]) # sverre: WORLD -> BODY
+        # Rot_pos = rotmat2d(x[2]) # sverre: BODY -> WORLD
+
+        Rot = rotmat2d(-x[2])
 
         # None as index ads an axis with size 1 at that position.
         # Numpy broadcasts size 1 dimensions to any size when needed
-        delta_m = list(map(lambda l: l - x[:2] - Rot_pos @ self.sensor_offset, m.T)) # TODO, relative position of landmark to sensor on robot in world frame 
+        # delta_m = list(map(lambda l: l - x[:2] - Rot_pos @ self.sensor_offset, m.T)) # TODO, relative position of landmark to sensor on robot in world frame 
         
-        zpredcart = list(map(lambda d_m: Rot_neg @ d_m, delta_m)) # TODO, predicted measurements in cartesian coordinates, beware sensor offset for VP
+        # zpredcart = list(map(lambda d_m: Rot_neg @ d_m, delta_m)) # TODO, predicted measurements in cartesian coordinates, beware sensor offset for VP
 
-        zpred_r = list(map(lambda rel_pos: la.norm(rel_pos), delta_m)) # TODO, ranges
+        # zpred_r = list(map(lambda rel_pos: la.norm(rel_pos), delta_m)) # TODO, ranges
 
-        zpred_theta = list(map(lambda rel_pos: np.arctan2(rel_pos[0], rel_pos[1]), zpredcart)) # TODO, bearings
+        # zpred_theta = list(map(lambda rel_pos: np.arctan2(rel_pos[0], rel_pos[1]), zpredcart)) # TODO, bearings
 
-        zpred = np.stack((zpred_r, zpred_theta)) # TODO, the two arrays above stacked on top of each other vertically like 
+        # zpred = np.stack((zpred_r, zpred_theta)) # TODO, the two arrays above stacked on top of each other vertically like 
         # [ranges; 
         #  bearings]
         # into shape (2, #lmrk) 
+
+
+        delta_m = m - (x[:2,None] + Rot.T @ self.sensor_offset[:,None])
+        zpredcart = Rot @ delta_m
+        zpred_r = np.linalg.norm(zpredcart,axis=0)
+        z_pred_theta = np.arctan2(zpredcart[1],zpredcart[0])
+        zpred = np.vstack((zpred_r,z_pred_theta))
 
         zpred = zpred.T.ravel() # stack measurements along one dimension, [range1 bearing1 range2 bearing2 ...]
 
@@ -250,17 +259,14 @@ class EKFSLAM:
             ind = 2 * i # starting postion of the ith landmark into H
 
             # TODO: Set H or Hx and Hm here
-            # Simon: Feil her
             d_m = delta_m[i]
-            # Hx[ind:(ind+2)] = -np.array([np.hstack([1/la.norm(d_m) * d_m, 0]),
-                            # np.hstack([1/la.norm(d_m)**2 * d_m.T @ Rpihalf, 1])])
 
             jac_z_cb[:, 2] = -Rpihalf @ d_m
             
             Hx[ind] = zc[i].T/zr[i] @ jac_z_cb
-            Hx[ind+1] = (zc[i].T @ Rpihalf.T)/zr[i] @ jac_z_cb
+            Hx[ind+1] = (zc[i].T @ Rpihalf.T)/(zr[i] ** 2) @ jac_z_cb
             
-            Hm[ind:ind+2, ind:ind+2] = (1/zr[i]) * np.vstack((zr[i] * d_m.T, d_m.T @ Rpihalf))
+            Hm[ind:ind+2, ind:ind+2] = 1/(zr[i] ** 2) * np.vstack((zr[i] * d_m.T, d_m.T @ Rpihalf))
 
         # TODO: You can set some assertions here to make sure that some of the structure in H is correct
 
@@ -310,10 +316,10 @@ class EKFSLAM:
             rot = rotmat2d(zj[1] + eta[2])# TODO, rotmat in Gz
 
             # lmnew[inds] = sensor_offset_world + zj[0]*np.array([np.cos(zj[1]), np.sin(zj[1])]).T + eta[:2] # TODO, calculate position of new landmark in world frame
-            lmnew[inds] = sensor_offset_world + zj[0]*rot[:,0]
+            lmnew[inds] = sensor_offset_world + zj[0]*rot[:,0] + eta[:2]
 
             Gx[inds, :2] = I2# TODO
-            Gx[inds, 2] = np.array([zj[0] * np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der])# TODO
+            # Gx[inds, 2] = np.array([zj[0] * np.array([-np.sin(zj[1] + eta[2]), np.cos(zj[1] + eta[2])]).T + sensor_offset_world_der])# TODO
             Gx[inds, 2] = sensor_offset_world_der + zj[0] * rot[:,1]
 
             Gz = rot @ np.diag([1, zj[0]])# TODO
@@ -324,7 +330,6 @@ class EKFSLAM:
         # etaadded = np.concatenate((eta, lmnew))# TODO, append new landmarks to state vector
         # Padded = la.block_diag(P, Gx@P[:3,:3]@Gx.T + Rall) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
         etaadded = np.append(eta, lmnew)
-        # sverre: endret etaadded
         # Padded = np.diag([P, Gx@P[:3,:3]@Gx.T + Rall]) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
         Padded = la.block_diag(P, Gx@P[:3,:3]@Gx.T + Rall)
         Padded[n:, :n] = Gx@P[:3, :] # TODO, bottom left corner of P_new
@@ -425,9 +430,9 @@ class EKFSLAM:
 
             # Here you can use simply np.kron (a bit slow) to form the big (very big in VP after a while) R,
             # or be smart with indexing and broadcasting (3d indexing into 2d mat) realizing you are adding the same R on all diagonals
-            # S = H@P@H.T + np.kron(np.eye(numLmk), self.R) # TODO,
-            stackedNoise = np.diag(   np.array([[self.R[0,0], self.R[1,1]] for r in range(numLmk)]).reshape(numLmk*2)    )
-            S = H @ P @ H.T + stackedNoise # TODO,
+            S = H@P@H.T + np.kron(np.eye(numLmk), self.R) # TODO,
+            # stackedNoise = np.diag(   np.array([[self.R[0,0], self.R[1,1]] for r in range(numLmk)]).reshape(numLmk*2)    )
+            # S = H @ P @ H.T + stackedNoise # TODO,
             assert (
                 S.shape == zpred.shape * 2
             ), "EKFSLAM.update: wrong shape on either S or zpred"
@@ -451,7 +456,7 @@ class EKFSLAM:
                 S_cho_factors = la.cho_factor(Sa) # Optional, used in places for S^-1, see scipy.linalg.cho_factor and scipy.linalg.cho_solve
                 W = la.cho_solve(S_cho_factors, Ha @ P).T
                 # W = P @ Ha.T @ la.inv(Sa) # TODO, Kalman gain, can use S_cho_factors
-                etaupd = eta + W @ v # TODO, Kalman update                         sverre: skal hele eta oppdateres eller bare tilstandene (ikke map'et)
+                etaupd = eta + W @ v # TODO, Kalman update
 
                 # Kalman cov update: use Joseph form for stability
                 jo = -W @ Ha
