@@ -146,6 +146,7 @@ class EKFSLAM:
         P[:3, 3:] = Fx @ P[:3, 3:] # TODO robot-map covariance prediction
         P[3:, :3] = P[:3, 3:].T # TODO map-robot covariance: transpose of the above
 
+
         assert np.allclose(P, P.T), "EKFSLAM.predict: not symmetric P"
         assert np.all(
             np.linalg.eigvals(P) > 0
@@ -266,9 +267,10 @@ class EKFSLAM:
                 jac_z_cb[:, 2] = -Rpihalf @ d_m
                 
                 Hx[ind] = (zc[i].T/zr[i]) @ jac_z_cb
-                Hx[ind+1] = (zc[i].T @ Rpihalf.T)/(zr[i]**2) @ jac_z_cb
+                Hx[ind+1] = (zc[i] @ Rpihalf.T)/(zr[i]**2) @ jac_z_cb
                 
-                Hm[ind:ind+2, ind:ind+2] = (1/(zr[i])**2) * np.vstack((zr[i] * d_m.T, d_m.T @ Rpihalf))
+                Hm[ind:ind+2, ind:ind+2] = -Hx[ind:ind+2, :2]  #(-1/(zr[i])**2) * np.vstack((zr[i] * d_m.T, d_m.T @ Rpihalf))  
+                
             else:
                 print("Landmark not detected")
 
@@ -548,5 +550,10 @@ class EKFSLAM:
         NEESes = np.array([NEES_all, NEES_pos, NEES_heading])
         NEESes[np.isnan(NEESes)] = 1.0  # We may divide by zero, # TODO: beware
 
+        n = 0
+        if np.any(NEESes > 1000):
+            n = n+1
+
+ 
         assert np.all(NEESes >= 0), "ESKF.NEES: one or more negative NEESes"
         return NEESes

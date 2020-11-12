@@ -96,14 +96,14 @@ K = len(z)
 M = len(landmarks)
 
 # %% Initilize
-Q = np.diag([0.05, 0.05, 0.012**2]) # TODO
-R = np.diag([(4e-2)**2, (4e-2)**2]) # TODO
+Q = np.diag([7e-2, 7e-2, 2e-2]) ** 2 * 1e-1 # TODO
+R = np.diag([5e-2, 5e-2]) ** 2 # TODO
 
 max_range = abs(landmarks[:,0]).max()
 
 doAsso = True
 
-JCBBalphas = np.array([1e-4, 1e-4]) # TODO,  # first is for joint compatibility, second is individual
+JCBBalphas = np.array([1e-5, 1e-5]) # TODO,  # first is for joint compatibility, second is individual
 
 
 # Q = np.array([[(7e-2)**2,0,0],
@@ -115,9 +115,7 @@ JCBBalphas = np.array([1e-4, 1e-4]) # TODO,  # first is for joint compatibility,
 
 # doAsso = True
 
-# JCBBalphas = np.array([1e-10, 1e-10]) # TODO,  # first is for joint compatibility, second is individual
-# these can have a large effect on runtime either through the number of landmarks created
-# or by the size of the association search space.
+# JCBBalphas = np.array([1e-4, 1e-4])
 
 slam = EKFSLAM(Q, R, do_asso=doAsso, alphas=JCBBalphas)
 
@@ -149,16 +147,21 @@ if doAssoPlot:
     figAsso, axAsso = plt.subplots(num=1, clear=True)
 
 # %% Run simulation
-N = K
+N = 1000
 
 print("starting sim (" + str(N) + " iterations)")
 
+
+total_num_associations = 0
+NISes = np.full(N, np.nan)
+
 for k, z_k in tqdm(enumerate(z[:N])):
+
 
     eta_hat[k], P_hat[k], NIS[k], a[k] = slam.update(eta_pred[k], P_pred[k], z_k)# TODO update
 
     if k < K - 1:
-        eta_pred[k + 1], P_pred[k + 1] = slam.predict(eta_hat[k], P_hat[k], odometry[k])# TODO predict
+        eta_pred[k + 1], P_pred[k + 1] = slam.predict(eta_hat[k], P_hat.copy()[k], odometry[k])# TODO predict
 
     assert (
         eta_hat[k].shape[0] == P_hat[k].shape[0]
@@ -171,6 +174,7 @@ for k, z_k in tqdm(enumerate(z[:N])):
     if num_asso > 0:
         NISnorm[k] = NIS[k] / (2 * num_asso)
         CInorm[k] = CI[k] / (2 * num_asso)
+        total_num_associations += num_asso
     else:
         NISnorm[k] = 1
         CInorm[k].fill(1)
@@ -202,6 +206,18 @@ lmk_est = [eta_hat_k[3:].reshape(-1, 2) for eta_hat_k in eta_hat[:N]]
 lmk_est_final = lmk_est[N - 1]
 
 np.set_printoptions(precision=4, linewidth=100)
+
+# %% ANIS
+
+NISes = NIS
+valid_NIS = ~np.isnan(NISes)
+NISes = NISes[valid_NIS]
+CI_ANIS = np.array(chi2.interval(1 - alpha, total_num_associations * 2)) / NISes.size 
+ANIS = NISes.mean()
+
+print(f"CI ANIS: {CI_ANIS}")
+print(f"ANIS: {ANIS}")
+
 
 # %% Plotting of results
 mins = np.amin(landmarks, axis=0)
