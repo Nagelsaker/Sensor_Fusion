@@ -106,13 +106,35 @@ b = 0.5  # laser distance to the left of center
 
 car = Car(L, H, a, b)
 
-sigmas = np.array([7e-2, 7e-2, 2e-2]) ** 2 * 1e-1 # TODO
+# DIVERGERTE KRAFTIG
+# sigmas = np.array([7e-2, 7e-2, 5e-2]) ** 2  # TODO
+# CorrCoeff = np.array([[1, 0, 0], [0, 1, 0.9], [0, 0.9, 1]])
+# Q = np.diag(sigmas) @ CorrCoeff @ np.diag(sigmas)
+
+# R = np.diag([5e-2, 5e-2]) ** 2 # TODO
+
+# alpha = chi2.sf(4 ** 2,2)
+
+# BEST SO Far
+# sigmas = np.array([7e-2, 7e-2, 1e-1]) ** 2    # TODO
+# CorrCoeff = np.array([[1, 0, 0], [0, 1, 0.9], [0, 0.9, 1]])
+# Q = np.diag(sigmas) @ CorrCoeff @ np.diag(sigmas)
+
+# R = np.diag([2e-2, 2e-2]) ** 2  # TODO
+
+# alpha = chi2.sf(3.5 ** 2,2)
+
+# JCBBalphas = np.array([alpha, alpha]) # TODO
+
+# BEST SO FAR 2 (krever eta_init[2] = 40 grader)
+sigmas = np.array([7e-2, 7e-2, 1e-1]) ** 2    # TODO
 CorrCoeff = np.array([[1, 0, 0], [0, 1, 0.9], [0, 0.9, 1]])
 Q = np.diag(sigmas) @ CorrCoeff @ np.diag(sigmas)
 
-R = np.diag([5e-2, 5e-2]) ** 2 # TODO
+R = np.diag([4e-2, 4e-2]) ** 2  # TODO
 
-alpha = chi2.sf(3.5 ** 2,2)
+alpha = chi2.sf(4 ** 2,2)
+
 JCBBalphas = np.array([alpha, alpha]) # TODO
 
 sensorOffset = np.array([car.a + car.L, car.b])
@@ -131,8 +153,12 @@ NISnorm = np.zeros(mK)
 CI = np.zeros((mK, 2))
 CInorm = np.zeros((mK, 2))
 
+# NISgps = np.zeros(Kgps)
+
 # Initialize state
-eta = np.array([Lo_m[0], La_m[1], 36 * np.pi / 180]) # you might want to tweak these for a good reference
+# eta = np.array([Lo_m[0], La_m[0], 36 * np.pi / 180]) # you might want to tweak these for a good reference
+# psi = np.arctan((Lo_m[5]-Lo_m[0])/(La_m[5]-La_m[0]))
+eta = np.array([Lo_m[0], La_m[0], 40 * np.pi / 180])
 P = np.zeros((3, 3))
 
 mk_first = 1  # first seems to be a bit off in timing
@@ -140,7 +166,7 @@ mk = mk_first
 t = timeOdo[0]
 
 # %%  run
-N = 2000#K
+N = 15000
 
 doPlot = False
 
@@ -153,7 +179,7 @@ if doPlot:
     sh_lmk = ax.scatter(np.nan, np.nan, c="r", marker="x")
     sh_Z = ax.scatter(np.nan, np.nan, c="b", marker=".")
 
-do_raw_prediction = True
+do_raw_prediction = False
 if do_raw_prediction:  # TODO: further processing such as plotting
     odos = np.zeros((K, 3))
     odox = np.zeros((K, 3))
@@ -193,6 +219,8 @@ for k in tqdm(range(N)):
             CInorm[mk].fill(1)
 
         xupd[mk] = eta[:3]
+
+
 
         if doPlot:
             sh_lmk.set_offsets(eta[3:].reshape(-1, 2))
@@ -236,6 +264,9 @@ ax3.plot(NISnorm[:mk], lw=0.5)
 
 ax3.set_title(f"NIS, {insideCI.mean()*100:.2f}% inside CI")
 
+# %% NIS GPS
+# fig2, ax2 = plt.subplots(num=3, clear=True)
+
 # %% slam
 
 if do_raw_prediction:
@@ -259,6 +290,23 @@ ax6.plot(*xupd[mk_first:mk, :2].T)
 ax6.set(
     title=f"Steps {k}, laser scans {mk-1}, landmarks {len(eta[3:])//2},\nmeasurements {z.shape[0]}, num new = {np.sum(a[mk] == -1)}"
 )
+
+# %% EKF-SLAM mot GPS
+
+fig1, ax1 = plt.subplots(num=5, clear=True)
+ax1.scatter(
+    Lo_m[timeGps < timeOdo[N - 1]],
+    La_m[timeGps < timeOdo[N - 1]],
+    c="r",
+    marker=".",
+    label="GPS",
+)
+ax1.plot(*xupd[mk_first:mk, :2].T, label="EKF-SLAM")
+ax1.grid()
+ax1.set_title("GPS vs EKF-SLAM")
+ax1.legend()
+
+
 plt.show()
 
 # %%

@@ -96,14 +96,14 @@ K = len(z)
 M = len(landmarks)
 
 # %% Initilize
-Q = np.diag([7e-2, 7e-2, 2e-2]) ** 2 * 1e-1 # TODO
-R = np.diag([5e-2, 5e-2]) ** 2 # TODO
+Q = np.diag([7e-2, 7e-2, 2.5e-2]) ** 2 * 1e-1 # TODO
+R = np.diag([4e-2, 4e-2]) ** 2 # TODO
 
 max_range = abs(landmarks[:,0]).max()
 
 doAsso = True
 
-JCBBalphas = np.array([1e-5, 1e-5]) # TODO,  # first is for joint compatibility, second is individual
+JCBBalphas = np.array([1e-6, 1e-6]) # TODO,  # first is for joint compatibility, second is individual
 
 
 # Q = np.array([[(7e-2)**2,0,0],
